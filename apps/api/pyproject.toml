@@ -1,0 +1,47 @@
+[project]
+name = "sdip-api"
+version = "0.1.0"
+description = "SDIP backend — FastAPI REST + Groq evaluation"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "sqlmodel>=0.0.22",
+    "asyncpg>=0.30.0",
+    "psycopg[binary]>=3.2.3",
+    "alembic>=1.13.3",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[argon2]>=1.7.4",
+    "python-multipart>=0.0.12",
+    "httpx>=0.27.2",
+    "groq>=0.11.0",
+    "slowapi>=0.1.9",
+    "structlog>=24.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "testcontainers[postgres]>=4.8.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

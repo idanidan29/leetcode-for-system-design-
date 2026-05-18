@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors → generate bg-paper, text-coral, border-night-line, etc. */
+  --color-paper: #f6f1e6;
+  --color-paper-2: #efe8d6;
+  --color-ink: #1a1814;
+  --color-ink-soft: #3a352d;
+  --color-ink-muted: #6b6457;
+  --color-rule: #d8cfb8;
+
+  --color-night: #0d0c0a;
+  --color-night-2: #161310;
+  --color-night-3: #1f1c17;
+  --color-night-line: #2a261f;
+
+  --color-bone: #efe7d3;
+  --color-bone-soft: #c9c0ab;
+  --color-bone-mute: #8a8273;
+
+  --color-coral: #ff6a3d;
+  --color-coral-soft: #ffb89a;
+  --color-amber: #f3b941;
+  --color-blue: #3b82f6;
+  --color-acid: #b5f23a;
+  --color-red: #e64b3c;
+
+  /* Fonts (CSS variables come from next/font in layout.tsx) */
+  --font-sans: var(--font-geist), system-ui, sans-serif;
+  --font-script: var(--font-caveat), cursive;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  /* Shadows */
+  --shadow-md: 0 12px 30px -12px rgba(20, 16, 8, 0.25);
+  --shadow-lg: 0 30px 80px -30px rgba(20, 16, 8, 0.4);
+
+  /* Animations → generate animate-draw, animate-fill, etc. */
+  --animate-draw: skDraw 4.5s ease-out forwards;
+  --animate-fill: skFill 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  --animate-climb-line: skClimbDraw 2.4s ease-out forwards;
+  --animate-climb-area: skFadeIn 0.8s ease 0.8s forwards;
+  --animate-climb-dot: skClimbDot 0.4s cubic-bezier(0.2, 1.2, 0.4, 1) forwards;
+  --animate-climb-final: skFadeIn 0.5s ease 2.2s forwards;
+
+  @keyframes skDraw {
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes skFill {
+    to { width: var(--target); }
+  }
+  @keyframes skClimbDraw {
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes skClimbDot {
+    0% { opacity: 0; r: 0; }
+    60% { opacity: 1; r: 6.5; }
+    100% { opacity: 1; r: 4.5; }
+  }
+  @keyframes skFadeIn {
+    to { opacity: 1; }
+  }
+}
