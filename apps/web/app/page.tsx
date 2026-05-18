@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { WhiteboardLoopSection } from "@/components/storyboard";
 import { useAuth } from "@/lib/auth";
 
 // ─── Constants & shared SVG style objects ─────────────────────────────────────
@@ -463,151 +464,6 @@ function ProblemsSection() {
   );
 }
 
-// ─── Benefits ─────────────────────────────────────────────────────────────────
-const BENEFIT_CARD = "flex min-h-[380px] flex-col rounded-[20px] border border-night-line bg-night-2 p-8 pb-9 transition hover:-translate-y-[3px] hover:border-coral/35";
-
-function ScoreCard() {
-  return (
-    <div className={BENEFIT_CARD}>
-      <div className="mb-7 flex flex-1 flex-col justify-center">
-        <div className="mb-[18px] font-mono text-[72px] font-semibold leading-none tracking-[-0.04em] text-bone">
-          4.2<span className="ml-1 text-[28px] text-bone-mute">/5</span>
-        </div>
-        <div className="mb-4 h-3 overflow-hidden rounded-full border border-night-line bg-night-3">
-          <div
-            className="h-full w-0 rounded-full bg-gradient-to-r from-coral to-acid shadow-[0_0_12px_rgba(181,242,58,0.5)] animate-fill"
-            style={{ ["--target" as string]: "84%" } as React.CSSProperties}
-          />
-        </div>
-        <div className="flex flex-wrap gap-x-2.5 gap-y-1 font-mono text-[10.5px] tracking-[0.04em] text-bone-mute">
-          <span>CORRECTNESS</span><span>SCALABILITY</span><span>RELIABILITY</span>
-          <span>PERFORMANCE</span><span>SECURITY</span><span>COST</span>
-        </div>
-      </div>
-      <h3 className="mb-2.5 text-[26px] font-semibold tracking-[-0.02em] text-bone">A real rubric, not vibes.</h3>
-      <p className="text-[14.5px] leading-[1.55] text-bone-soft">
-        Every diagram gets graded against the six things senior engineers actually care about — with rationales, not just numbers.
-      </p>
-    </div>
-  );
-}
-
-function ClimbCard() {
-  const points = [
-    { x: 24,  y: 168 },
-    { x: 88,  y: 138 },
-    { x: 152, y: 100 },
-    { x: 216, y: 78  },
-    { x: 280, y: 44  },
-  ];
-  const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const area = `${line} L ${points[points.length - 1].x} 196 L ${points[0].x} 196 Z`;
-  return (
-    <div className={BENEFIT_CARD}>
-      <div className="mb-7 flex flex-1 flex-col justify-center">
-        <svg className="h-[200px] w-full" viewBox="0 0 304 200" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="climbGrad" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%"   stopColor="var(--color-coral)" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="var(--color-coral)" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path
-            className="opacity-0 animate-climb-area"
-            d={area}
-            fill="url(#climbGrad)"
-          />
-          <path
-            className="animate-climb-line [stroke-dasharray:360] [stroke-dashoffset:360] [filter:drop-shadow(0_0_6px_rgba(255,106,61,0.45))]"
-            d={line}
-            fill="none"
-            stroke="var(--color-coral)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {points.map((p, i) => (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r="4.5"
-              fill="var(--color-coral)"
-              className="opacity-0 animate-climb-dot"
-              style={{ animationDelay: `${0.4 + i * 0.32}s` }}
-            />
-          ))}
-          <text
-            className="opacity-0 animate-climb-final"
-            x="280" y="28"
-            textAnchor="end"
-            fontFamily="var(--font-mono)"
-            fontSize="13"
-            fill="var(--color-acid)"
-            fontWeight="600"
-          >
-            +1.8
-          </text>
-        </svg>
-      </div>
-      <h3 className="mb-2.5 text-[26px] font-semibold tracking-[-0.02em] text-bone">Iterate until it clicks.</h3>
-      <p className="text-[14.5px] leading-[1.55] text-bone-soft">
-        Re-submit as many times as you want. Watch the rubric scores climb. Mistakes you make here are ones you won&apos;t make on stage.
-      </p>
-    </div>
-  );
-}
-
-function FreeCard() {
-  return (
-    <div className={BENEFIT_CARD}>
-      <div className="mb-7 flex flex-1 flex-col justify-center">
-        <div className="flex items-center gap-6">
-          <div className="flex flex-1 flex-col gap-1">
-            <span className="font-mono text-[56px] font-semibold leading-none tracking-[-0.03em] text-bone">$0</span>
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-bone-mute">PER MONTH</span>
-          </div>
-          <div className="w-px self-stretch bg-night-line" />
-          <div className="flex flex-1 flex-col gap-1">
-            <span className="font-mono text-[56px] font-semibold leading-none tracking-[-0.03em] text-bone">10</span>
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-bone-mute">CORE PROBLEMS</span>
-          </div>
-        </div>
-      </div>
-      <h3 className="mb-2.5 text-[26px] font-semibold tracking-[-0.02em] text-bone">Free, while it&apos;s in beta.</h3>
-      <p className="text-[14.5px] leading-[1.55] text-bone-soft">
-        Backed by Groq&apos;s free tier under the hood. No card, no trial timer — just sign up and start drilling.
-      </p>
-    </div>
-  );
-}
-
-function Benefits() {
-  return (
-    <section id="sk-benefits" className={`${DOT_NIGHT_BG} py-[120px]`}>
-      <div className="mx-auto max-w-[1240px] px-7">
-        <div className="mb-16 text-center">
-          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-bone-mute">
-            <span className="mr-2 inline-block h-1.5 w-1.5 -translate-y-px rounded-full bg-coral align-middle" />
-            WHY SKETCHD
-          </span>
-          <h2 className="mx-0 my-[14px] mb-[18px] text-[clamp(36px,5vw,60px)] font-semibold leading-[1.02] tracking-[-0.025em] text-bone">
-            The drilling reps your prep is missing.
-          </h2>
-          <p className="mx-auto max-w-[60ch] text-[18px] text-bone-soft">
-            Reading system-design articles teaches you patterns. Practicing them under feedback is what makes them stick.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
-          <ScoreCard />
-          <ClimbCard />
-          <FreeCard />
-        </div>
-      </div>
-    </section>
-  );
-}
-
 // ─── Final CTA ────────────────────────────────────────────────────────────────
 function FinalCTA() {
   return (
@@ -677,7 +533,7 @@ export default function Page() {
       <Hero />
       <Pipeline />
       <ProblemsSection />
-      <Benefits />
+      <WhiteboardLoopSection />
       <FinalCTA />
       <Footer />
     </>
