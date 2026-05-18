@@ -2,11 +2,20 @@
 
 **Definition of done:** A logged-in user can pick a problem from a catalog, draw a system design on a canvas, save it, and receive structured AI feedback.
 
+## User flow
+
+**Guest-first, signup-gated for value actions:**
+
+- **Public (no account):** browse the catalog, open a problem, sketch on the whiteboard (client-side only, nothing persisted).
+- **Auth required:** save a submission, evaluate it with the LLM, view past submissions.
+
+Rationale: lower friction so users feel the product before committing, and gate the free LLM tier behind authenticated per-user rate limits.
+
 ## In scope
 
 ### Auth
 - Email + password signup / login (passwords hashed with argon2id)
-- JWT access token (15 min) + refresh token (7 days)
+- JWT access token (15 min) + refresh token (7 days), stored in **httpOnly Secure SameSite=Lax cookies** (not localStorage)
 - `users` table: id, email, password_hash, display_name, created_at
 
 ### Problems

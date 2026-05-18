@@ -1,6 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+
+import { BrandMark } from "@/components/brand-mark";
+import { useAuth } from "@/lib/auth";
 
 // ─── Constants & shared SVG style objects ─────────────────────────────────────
 const STROKE_INK = {
@@ -179,58 +183,77 @@ function Hero() {
 }
 
 // ─── Reusable buttons (Tailwind utility composition) ──────────────────────────
-function PrimaryBtn({ children }: { children: React.ReactNode }) {
+function PrimaryBtn({ children, href = "/signup" }: { children: React.ReactNode; href?: string }) {
   return (
-    <button className="group inline-flex items-center gap-2 rounded-[10px] bg-ink px-4 py-2.5 text-sm font-medium text-paper shadow-md transition hover:-translate-y-px">
+    <Link
+      href={href}
+      className="group inline-flex items-center gap-2 rounded-[10px] bg-ink px-4 py-2.5 text-sm font-medium text-paper shadow-md transition hover:-translate-y-px"
+    >
       {children}
       <svg className="transition-transform group-hover:translate-x-[3px]" width="14" height="14" viewBox="0 0 14 14" fill="none">
         <path d="M1 7h12m0 0L8 2m5 5l-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
-    </button>
+    </Link>
   );
 }
 
-function OutlineBtn({ children }: { children: React.ReactNode }) {
+function OutlineBtn({ children, href = "#" }: { children: React.ReactNode; href?: string }) {
   return (
-    <button className="inline-flex items-center gap-2 rounded-[10px] border border-ink bg-transparent px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink hover:text-paper">
-      {children}
-    </button>
-  );
-}
-
-// ─── Brand mark ───────────────────────────────────────────────────────────────
-function BrandMark({ invert = false }: { invert?: boolean }) {
-  return (
-    <div
-      className={
-        "relative grid h-7 w-7 place-items-center overflow-hidden rounded-[7px] font-mono text-[13px] " +
-        (invert ? "bg-bone text-night" : "bg-ink text-paper") +
-        " after:absolute after:inset-0 after:content-[''] after:opacity-90 " +
-        "after:bg-[linear-gradient(135deg,transparent_45%,var(--color-coral)_45%,var(--color-coral)_55%,transparent_55%)]"
-      }
+    <Link
+      href={href}
+      className="inline-flex items-center gap-2 rounded-[10px] border border-ink bg-transparent px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink hover:text-paper"
     >
-      <span className="relative z-10">S</span>
-    </div>
+      {children}
+    </Link>
   );
 }
 
 // ─── Nav ───────────────────────────────────────────────────────────────────────
 function Nav() {
+  const { user, loading, logout } = useAuth();
   return (
     <nav className="sticky top-0 z-50 border-b border-rule bg-paper/80 backdrop-blur-md backdrop-saturate-150">
       <div className="mx-auto flex max-w-[1240px] items-center justify-between px-7 py-3.5">
-        <div className="flex items-center gap-2.5 font-semibold tracking-tight">
+        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
           <BrandMark />
           <span>sketchd</span>
-        </div>
+        </Link>
         <div className="hidden gap-7 text-sm text-ink-soft md:flex">
           <a href="#sk-pipeline" className="hover:text-ink">How it works</a>
           <a href="#sk-problems" className="hover:text-ink">Problems</a>
           <a href="#sk-benefits" className="hover:text-ink">Why sketchd</a>
         </div>
         <div className="flex items-center gap-2.5">
-          <button className="rounded-[10px] px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink/5">Sign in</button>
-          <button className="rounded-[10px] bg-ink px-4 py-2.5 text-sm font-medium text-paper shadow-md transition hover:-translate-y-px">Start free</button>
+          {loading ? (
+            <div className="h-9 w-32" aria-hidden />
+          ) : user ? (
+            <>
+              <span className="hidden text-sm text-ink-soft sm:inline">
+                Hi, <span className="font-medium text-ink">{user.display_name}</span>
+              </span>
+              <button
+                onClick={() => void logout()}
+                className="rounded-[10px] px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink/5"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-[10px] px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink/5"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-[10px] bg-ink px-4 py-2.5 text-sm font-medium text-paper shadow-md transition hover:-translate-y-px"
+              >
+                Start free
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

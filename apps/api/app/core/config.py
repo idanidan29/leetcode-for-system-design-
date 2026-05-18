@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 7
 
+    # Cookie flags. In prod set cookie_secure=true (requires HTTPS).
+    cookie_secure: bool = False
+    cookie_samesite: str = "lax"
+    cookie_domain: str | None = None
+
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
 

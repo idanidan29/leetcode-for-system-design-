@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000 --log-level warning)",
+      "Bash(curl -sf http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/api/v1/problems)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'  items: {len\\(d[\\\\\"items\\\\\"]\\)}, next_cursor: {d[\\\\\"next_cursor\\\\\"]}'\\); print\\('  first:', d['items'][0]['id'], '-', d['items'][0]['title']\\)\")",
+      "Bash(curl -s 'http://localhost:8000/api/v1/problems?difficulty=hard')",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'  items: {len\\(d[\\\\\"items\\\\\"]\\)}'\\); [print\\(f'    {p[\\\\\"id\\\\\"]:22s} {p[\\\\\"difficulty\\\\\"]}'\\) for p in d['items']]\")",
+      "Bash(curl -s 'http://localhost:8000/api/v1/problems?tags=cache')",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'  items: {len\\(d[\\\\\"items\\\\\"]\\)}'\\); [print\\(f'    {p[\\\\\"id\\\\\"]:22s} tags={p[\\\\\"tags\\\\\"]}'\\) for p in d['items']]\")",
+      "Bash(curl -s 'http://localhost:8000/api/v1/problems?limit=3')",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'  items: {len\\(d[\\\\\"items\\\\\"]\\)}, next_cursor: {d[\\\\\"next_cursor\\\\\"]}'\\)\")",
+      "Bash(curl -s http://localhost:8000/api/v1/problems/url-shortener)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'  title: {d[\\\\\"title\\\\\"]}'\\); print\\(f'  difficulty: {d[\\\\\"difficulty\\\\\"]}'\\); print\\(f'  functional reqs: {len\\(d[\\\\\"functional_requirements\\\\\"]\\)}'\\); print\\(f'  constraints: {list\\(d[\\\\\"constraints\\\\\"].keys\\(\\)\\)}'\\)\")",
+      "Bash(curl -s -o /dev/null -w \"  HTTP %{http_code}\\\\n\" http://localhost:8000/api/v1/problems/does-not-exist)",
+      "Bash(.venv/Scripts/python.exe -c \"from app.main import app; print\\('import OK'\\); print\\([r.path for r in app.routes if 'auth' in r.path]\\)\")",
+      "Bash(rm -f /tmp/sdip_cookies.txt)",
+      "Bash(curl -s -c /tmp/sdip_cookies.txt -w '\\\\n  HTTP %{http_code}\\\\n' -X POST http://localhost:8000/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"__TRACKED_VAR__\",\"password\":\"hunter2hunter\",\"display_name\":\"Smoke Test\"}')",
+      "Read(//tmp/**)",
+      "Bash(netstat -ano)"
+    ]
+  }
+}

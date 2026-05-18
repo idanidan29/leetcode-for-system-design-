@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Caveat, Geist, JetBrains_Mono } from "next/font/google";
+
+import { AuthProvider } from "@/lib/auth";
+
 import "./globals.css";
 
 const geist = Geist({
@@ -37,7 +40,7 @@ export default function RootLayout({
       className={`${geist.variable} ${caveat.variable} ${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
