@@ -105,6 +105,17 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+@keyframes marquee-left {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes marquee-right {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none !important; }
+}
 @keyframes sb-confetti {
   0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0); }
   10%  { opacity: 1; }

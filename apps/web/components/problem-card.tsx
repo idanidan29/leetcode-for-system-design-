@@ -7,7 +7,7 @@ interface Props {
   index: number;
 }
 
-const DIFF_STYLE: Record<Difficulty, { label: string; cls: string }> = {
+export const DIFF_STYLE: Record<Difficulty, { label: string; cls: string }> = {
   easy:   { label: "EASY",   cls: "bg-acid/20 text-[#5a7d10]" },
   medium: { label: "MEDIUM", cls: "bg-amber/20 text-[#8a5b00]" },
   hard:   { label: "HARD",   cls: "bg-red/15 text-[#a82c20]" },
