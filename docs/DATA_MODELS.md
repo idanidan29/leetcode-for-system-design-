@@ -57,8 +57,8 @@ Index: `(user_id, problem_id, created_at DESC)`
   "edges": [
     {
       "id": "edge-1",
-      "from": "node-1",
-      "to": "node-2",
+      "source": "node-1",
+      "target": "node-2",
       "label": "caching layer",
       "metadata": { "latency_ms": 1, "throughput": "10k/s" }
     }

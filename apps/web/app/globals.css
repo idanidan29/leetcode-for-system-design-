@@ -102,6 +102,9 @@
 @keyframes sb-blink {
   50% { opacity: 0; }
 }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 @keyframes sb-confetti {
   0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0); }
   10%  { opacity: 1; }

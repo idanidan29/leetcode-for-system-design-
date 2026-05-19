@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { Nav } from "@/components/nav";
+import { ProblemCard } from "@/components/problem-card";
 import { WhiteboardLoopSection } from "@/components/storyboard";
-import { useAuth } from "@/lib/auth";
+import { problems as problemsApi, type Problem } from "@/lib/api";
 
 // ─── Constants & shared SVG style objects ─────────────────────────────────────
 const STROKE_INK = {
@@ -209,58 +211,6 @@ function OutlineBtn({ children, href = "#" }: { children: React.ReactNode; href?
   );
 }
 
-// ─── Nav ───────────────────────────────────────────────────────────────────────
-function Nav() {
-  const { user, loading, logout } = useAuth();
-  return (
-    <nav className="sticky top-0 z-50 border-b border-rule bg-paper/80 backdrop-blur-md backdrop-saturate-150">
-      <div className="mx-auto flex max-w-[1240px] items-center justify-between px-7 py-3.5">
-        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-          <BrandMark />
-          <span>sketchd</span>
-        </Link>
-        <div className="hidden gap-7 text-sm text-ink-soft md:flex">
-          <a href="#sk-pipeline" className="hover:text-ink">How it works</a>
-          <a href="#sk-problems" className="hover:text-ink">Problems</a>
-          <a href="#sk-benefits" className="hover:text-ink">Why sketchd</a>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {loading ? (
-            <div className="h-9 w-32" aria-hidden />
-          ) : user ? (
-            <>
-              <span className="hidden text-sm text-ink-soft sm:inline">
-                Hi, <span className="font-medium text-ink">{user.display_name}</span>
-              </span>
-              <button
-                onClick={() => void logout()}
-                className="rounded-[10px] px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink/5"
-              >
-                Log out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="rounded-[10px] px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink/5"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-[10px] bg-ink px-4 py-2.5 text-sm font-medium text-paper shadow-md transition hover:-translate-y-px"
-              >
-                Start free
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </nav>
-  );
-}
-
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
 function MiniProblemPick() {
   return (
@@ -389,30 +339,38 @@ function Pipeline() {
   );
 }
 
-// ─── Problems ─────────────────────────────────────────────────────────────────
-type Diff = "easy" | "med" | "hard";
-interface Problem { id: string; title: string; diff: Diff; tags: string[]; blurb: string; }
-
-const PROBLEMS: Problem[] = [
-  { id: "url-shortener",     title: "Design a URL shortener",            diff: "easy", tags: ["hashing","cache","redirects"],            blurb: "Tiny strings, massive scale. Get the read path right." },
-  { id: "twitter-feed",      title: "Design a Twitter-style feed",       diff: "hard", tags: ["fan-out","timeline","ranking"],           blurb: "Push vs. pull, hot users, and the celebrity problem." },
-  { id: "chat",              title: "Design a real-time chat service",   diff: "med",  tags: ["websockets","queues","presence"],         blurb: "Delivery guarantees, ordering, and presence at scale." },
-  { id: "rate-limiter",      title: "Design a rate limiter",             diff: "easy", tags: ["token-bucket","redis","edge"],            blurb: "Per-user, per-IP, distributed. Without the lock contention." },
-  { id: "autocomplete",      title: "Search autocomplete",               diff: "med",  tags: ["trie","ranking","cache"],                 blurb: "Sub-100ms suggestions across billions of queries." },
-  { id: "video-streaming",   title: "Design a video streaming platform", diff: "hard", tags: ["CDN","HLS","encoding"],                   blurb: "From upload to playback on a flaky 3G connection." },
-  { id: "payment",           title: "Design a payment processor",        diff: "hard", tags: ["idempotency","double-write","audit"],     blurb: "Money moves once. No matter what fails along the way." },
-  { id: "notification",      title: "Design a notification system",      diff: "med",  tags: ["fan-out","preferences","delivery"],       blurb: "Push, email, SMS — at fan-out, with retries that don’t loop." },
-  { id: "ride-sharing",      title: "Design a ride-sharing service",     diff: "hard", tags: ["geospatial","matching","realtime"],       blurb: "Match drivers to riders on a map that never stops moving." },
-  { id: "distributed-cache", title: "Design a distributed cache",        diff: "med",  tags: ["consistent-hash","eviction","replication"], blurb: "Hash ring, eviction policy, replication — without re-inventing Redis." },
-];
-
-const DIFF_STYLE: Record<Diff, { label: string; cls: string }> = {
-  easy: { label: "EASY",   cls: "bg-acid/20 text-[#5a7d10]" },
-  med:  { label: "MEDIUM", cls: "bg-amber/20 text-[#8a5b00]" },
-  hard: { label: "HARD",   cls: "bg-red/15 text-[#a82c20]" },
-};
-
+// ─── Problems (fetches from the live catalog API) ─────────────────────────────
 function ProblemsSection() {
+  const [items, setItems] = useState<Problem[] | null>(null);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    problemsApi
+      .list({ limit: 100 })
+      .then((res) => {
+        if (!cancelled) setItems(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setErrored(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // While the catalog loads (or fails silently), keep the section height
+  // stable with a skeleton so the page doesn't jump.
+  const cards =
+    items !== null
+      ? items.map((p, i) => <ProblemCard key={p.id} problem={p} index={i} />)
+      : Array.from({ length: 10 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-[170px] animate-pulse rounded-[14px] border border-rule bg-white"
+          />
+        ));
+
   return (
     <section id="sk-problems" className="py-[120px]">
       <div className="mx-auto max-w-[1240px] px-7">
@@ -429,36 +387,17 @@ function ProblemsSection() {
           </p>
         </div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3.5">
-          {PROBLEMS.map((p, i) => {
-            const d = DIFF_STYLE[p.diff];
-            return (
-              <div
-                key={p.id}
-                className={
-                  "group relative cursor-pointer overflow-hidden rounded-[14px] border border-rule bg-white p-5 " +
-                  "transition hover:-translate-y-[3px] hover:border-ink hover:shadow-lg " +
-                  "after:absolute after:-top-px after:-right-px after:h-[60px] after:w-[60px] after:opacity-0 after:content-[''] " +
-                  "after:bg-[radial-gradient(circle_at_top_right,var(--color-coral)_0%,transparent_60%)] " +
-                  "after:transition-opacity hover:after:opacity-20"
-                }
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <span className="font-mono text-[11px] text-ink-muted">#{String(i + 1).padStart(2, "0")}</span>
-                  <span className={`rounded-full px-2 py-[3px] font-mono text-[10px] tracking-[0.1em] ${d.cls}`}>{d.label}</span>
-                </div>
-                <h3 className="mb-2.5 text-[18px] font-semibold tracking-tight">{p.title}</h3>
-                <p className="mb-3.5 text-[13px] leading-[1.5] text-ink-muted">{p.blurb}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.tags.map((t) => (
-                    <span key={t} className="rounded bg-paper-2 px-2 py-[3px] font-mono text-[10px] text-ink-soft">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+          {cards}
         </div>
+        {errored && (
+          <p className="mt-6 text-center text-[13px] text-ink-muted">
+            Couldn&apos;t load the live catalog — head to{" "}
+            <Link href="/problems" className="font-medium text-coral hover:underline">
+              /problems
+            </Link>{" "}
+            to try directly.
+          </p>
+        )}
       </div>
     </section>
   );
@@ -529,7 +468,7 @@ function Footer() {
 export default function Page() {
   return (
     <>
-      <Nav />
+      <Nav showAnchors />
       <Hero />
       <Pipeline />
       <ProblemsSection />
