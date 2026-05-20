@@ -22,7 +22,7 @@ export function ProblemCard({ problem, index }: Props) {
 
   return (
     <Link
-      href={`/problems/${problem.id}`}
+      href={`/problems/${problem.id}/draw`}
       className={
         "group relative block overflow-hidden rounded-[14px] border border-rule bg-white p-5 " +
         "transition hover:-translate-y-[3px] hover:border-ink hover:shadow-lg " +

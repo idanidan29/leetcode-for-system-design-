@@ -117,7 +117,7 @@ function CarouselCard({ problem }: { problem: Problem }) {
 
   return (
     <Link
-      href={`/problems/${problem.id}`}
+      href={`/problems/${problem.id}/draw`}
       className={
         "group/card relative flex w-[300px] shrink-0 flex-col overflow-hidden rounded-[14px] border border-rule bg-white p-5 " +
         "transition hover:-translate-y-[3px] hover:border-ink hover:shadow-lg " +

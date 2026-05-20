@@ -3,6 +3,7 @@
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -166,6 +167,7 @@ const CanvasInner = forwardRef<CanvasHandle, Props>(function CanvasInner({ initi
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       nodeTypes={NODE_TYPES}
+      connectionMode={ConnectionMode.Loose}
       fitView
       proOptions={{ hideAttribution: true }}
     >
