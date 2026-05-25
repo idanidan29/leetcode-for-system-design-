@@ -116,6 +116,90 @@
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none !important; }
 }
+/* ─── Whiteboard (React Flow) — edges, handles, selection glow ───────────── */
+
+/* Default edge: clean ink stroke. */
+.react-flow__edge .react-flow__edge-path {
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+  transition: stroke 120ms ease, stroke-width 120ms ease, filter 120ms ease;
+}
+
+/* Hover an edge → soft coral glow. */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--color-coral);
+  stroke-width: 2.25;
+  filter: drop-shadow(0 0 4px rgba(255, 106, 61, 0.55));
+}
+
+/* Selected edge → strong glow + thicker stroke. */
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path {
+  stroke: var(--color-coral);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 6px rgba(255, 106, 61, 0.75))
+          drop-shadow(0 0 12px rgba(255, 106, 61, 0.35));
+  animation: sk-edge-pulse 2s ease-in-out infinite;
+}
+
+/* Line being drawn (drag-from-handle) → animated dashed coral. */
+.react-flow__connection-path,
+.react-flow__connectionline path {
+  stroke: var(--color-coral) !important;
+  stroke-width: 2.25 !important;
+  stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 6px rgba(255, 106, 61, 0.6));
+  animation: sk-dash-flow 0.6s linear infinite;
+}
+
+/* Node handles: glow ring on hover (no transform — React Flow positions
+   handles with its own translate, so scaling them displaces them). */
+.sk-handle {
+  transition: background-color 120ms ease, box-shadow 160ms ease;
+}
+.sk-handle:hover {
+  background-color: var(--color-coral) !important;
+  box-shadow: 0 0 0 4px rgba(255, 106, 61, 0.22),
+              0 0 12px rgba(255, 106, 61, 0.7);
+}
+
+/* When a node is selected, glow rather than ring (works for non-rect shapes). */
+.sk-node-selected svg {
+  filter: drop-shadow(0 0 6px rgba(255, 106, 61, 0.5))
+          drop-shadow(0 0 14px rgba(255, 106, 61, 0.25));
+}
+
+/* Endpoint draggers on selected edges — Figma-style grab handles. */
+.react-flow__edgeupdater {
+  fill: transparent;
+  cursor: grab;
+}
+.react-flow__edge.selected .react-flow__edgeupdater,
+.react-flow__edge:hover .react-flow__edgeupdater {
+  fill: var(--color-coral);
+  stroke: white;
+  stroke-width: 2;
+  r: 5;
+  filter: drop-shadow(0 0 4px rgba(255, 106, 61, 0.6));
+}
+.react-flow__edgeupdater:active {
+  cursor: grabbing;
+}
+
+@keyframes sk-dash-flow {
+  to { stroke-dashoffset: -10; }
+}
+@keyframes sk-edge-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(255, 106, 61, 0.75))
+            drop-shadow(0 0 12px rgba(255, 106, 61, 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 9px rgba(255, 106, 61, 0.95))
+            drop-shadow(0 0 18px rgba(255, 106, 61, 0.55));
+  }
+}
+
 @keyframes sb-confetti {
   0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0); }
   10%  { opacity: 1; }
