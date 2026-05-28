@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* In-page anchor navigation: animate the scroll and keep the target clear of
+   the sticky nav (~64px tall + breathing room). Respect prefers-reduced-motion
+   so users who opted out still get an instant jump. */
+html {
+  scroll-padding-top: 88px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 @theme {
   /* Colors → generate bg-paper, text-coral, border-night-line, etc. */
   --color-paper: #f6f1e6;
