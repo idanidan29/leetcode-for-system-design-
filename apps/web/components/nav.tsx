@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { BrandMark } from "@/components/brand-mark";
+import { Avatar } from "@/components/profile/avatar";
 import { useAuth } from "@/lib/auth";
 
 interface Props {
@@ -37,9 +38,16 @@ export function Nav({ showAnchors = false }: Props) {
             <div className="h-9 w-32" aria-hidden />
           ) : user ? (
             <>
-              <span className="hidden text-sm text-ink-soft sm:inline">
-                Hi, <span className="font-medium text-ink">{user.display_name}</span>
-              </span>
+              <Link
+                href="/profile"
+                title={`View ${user.display_name}'s profile`}
+                className="group flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition hover:bg-ink/5"
+              >
+                <Avatar user={user} size={30} />
+                <span className="hidden text-sm font-medium text-ink sm:inline">
+                  {user.display_name}
+                </span>
+              </Link>
               <button
                 onClick={() => void logout()}
                 className="rounded-[10px] px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-ink/5"

@@ -200,6 +200,20 @@
   }
 }
 
+/* ─── Badge modal + unlock toast ─────────────────────────────────────────── */
+@keyframes sk-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sk-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes sk-toast-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
 @keyframes sb-confetti {
   0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0); }
   10%  { opacity: 1; }

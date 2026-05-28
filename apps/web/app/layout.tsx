@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Caveat, Geist, JetBrains_Mono } from "next/font/google";
 
+import { BadgesProvider } from "@/components/profile/badges";
 import { AuthProvider } from "@/lib/auth";
 
 import "./globals.css";
@@ -40,7 +41,9 @@ export default function RootLayout({
       className={`${geist.variable} ${caveat.variable} ${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <BadgesProvider>{children}</BadgesProvider>
+        </AuthProvider>
       </body>
     </html>
   );

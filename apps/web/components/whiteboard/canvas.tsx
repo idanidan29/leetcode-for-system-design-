@@ -33,8 +33,12 @@ import {
   useRef,
 } from "react";
 
-import type { Diagram, DiagramEdge, DiagramNode } from "@/lib/api";
+import type { Diagram, DiagramEdge, DiagramNode, EvaluationIssue } from "@/lib/api";
 
+import {
+  AnnotationsContext,
+  buildAnnotationMap,
+} from "./annotations-context";
 import { HistoryContext } from "./history-context";
 import {
   SketchdNode,
@@ -61,10 +65,14 @@ export interface CanvasHandle {
   toDiagram: () => Diagram;
   loadDiagram: (d: Diagram) => void;
   clear: () => void;
+  /** Pan/zoom to a node and select it. Used by side-panel "click to highlight". */
+  focusNode: (nodeId: string) => void;
 }
 
 interface Props {
   initial?: Diagram | null;
+  /** Evaluation issues used to drive per-node badges. */
+  issues?: EvaluationIssue[];
 }
 
 function newId(): string {
@@ -140,7 +148,7 @@ function reactFlowToDiagram(nodes: RFNode[], edges: Edge[]): Diagram {
 }
 
 // ─── Canvas inner (lives inside ReactFlowProvider) ───────────────────────────
-const CanvasInner = forwardRef<CanvasHandle, Props>(function CanvasInner({ initial }, ref) {
+const CanvasInner = forwardRef<CanvasHandle, Props>(function CanvasInner({ initial, issues }, ref) {
   const initialRF = useMemo(
     () => (initial ? diagramToReactFlow(initial) : { nodes: [], edges: [] }),
     [initial],
@@ -148,7 +156,11 @@ const CanvasInner = forwardRef<CanvasHandle, Props>(function CanvasInner({ initi
 
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>(initialRF.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialRF.edges);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setCenter, getNode } = useReactFlow();
+
+  // Build the annotations map from current issues. Memoized so it only rebuilds
+  // when the issues array reference changes.
+  const annotationMap = useMemo(() => buildAnnotationMap(issues), [issues]);
 
   const dropOffset = useRef(0);
 
@@ -297,12 +309,28 @@ const CanvasInner = forwardRef<CanvasHandle, Props>(function CanvasInner({ initi
         setNodes([]);
         setEdges([]);
       },
+
+      focusNode: (nodeId: string) => {
+        const n = getNode(nodeId);
+        if (!n) return;
+        const w = n.measured?.width ?? 140;
+        const h = n.measured?.height ?? 70;
+        setCenter(n.position.x + w / 2, n.position.y + h / 2, {
+          zoom: 1.4,
+          duration: 500,
+        });
+        // Also mark it as selected so the highlight glow kicks in.
+        setNodes((ns) =>
+          ns.map((m) => ({ ...m, selected: m.id === nodeId })),
+        );
+      },
     }),
-    [nodes, edges, setNodes, setEdges, screenToFlowPosition, push],
+    [nodes, edges, setNodes, setEdges, screenToFlowPosition, push, getNode, setCenter],
   );
 
   return (
     <HistoryContext.Provider value={historyValue}>
+      <AnnotationsContext.Provider value={annotationMap}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -320,6 +348,7 @@ const CanvasInner = forwardRef<CanvasHandle, Props>(function CanvasInner({ initi
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="rgba(26,24,20,0.18)" />
         <Controls position="bottom-right" />
       </ReactFlow>
+      </AnnotationsContext.Provider>
     </HistoryContext.Provider>
   );
 });

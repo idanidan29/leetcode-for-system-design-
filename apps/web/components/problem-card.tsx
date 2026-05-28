@@ -58,3 +58,58 @@ export function ProblemCard({ problem, index }: Props) {
     </Link>
   );
 }
+
+// ─── Row variant ─────────────────────────────────────────────────────────────
+// Compact LeetCode-style row. Tight vertical rhythm, alternating row tint so
+// long lists stay scannable; hover lifts the row and reveals an "open" cue.
+export function ProblemRow({ problem, index }: Props) {
+  const d = DIFF_STYLE[problem.difficulty];
+  return (
+    <Link
+      href={`/problems/${problem.id}/draw`}
+      className={
+        "group grid grid-cols-[48px_1fr_auto_96px_28px] items-center gap-4 " +
+        "border-b border-rule px-4 py-3 transition " +
+        "odd:bg-white even:bg-paper-2/40 " +
+        "hover:bg-coral/[0.06] hover:shadow-[inset_3px_0_0_0_var(--color-coral)]"
+      }
+    >
+      <span className="font-mono text-[11px] text-ink-muted">
+        #{String(index + 1).padStart(2, "0")}
+      </span>
+      <div className="min-w-0">
+        <div className="truncate text-[14px] font-medium text-ink group-hover:text-coral">
+          {problem.title}
+        </div>
+      </div>
+      <div className="hidden max-w-[280px] flex-wrap justify-end gap-1 md:flex">
+        {problem.tags.slice(0, 3).map((t) => (
+          <span
+            key={t}
+            className="rounded bg-paper-2 px-1.5 py-[2px] font-mono text-[9.5px] text-ink-soft"
+          >
+            {t}
+          </span>
+        ))}
+        {problem.tags.length > 3 && (
+          <span className="font-mono text-[9.5px] text-ink-muted">
+            +{problem.tags.length - 3}
+          </span>
+        )}
+      </div>
+      <div className="flex justify-end">
+        <span
+          className={`rounded-full px-2 py-[3px] text-center font-mono text-[10px] tracking-[0.1em] ${d.cls}`}
+        >
+          {d.label}
+        </span>
+      </div>
+      <svg
+        width="14" height="14" viewBox="0 0 14 14" fill="none"
+        className="text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-coral"
+      >
+        <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </Link>
+  );
+}

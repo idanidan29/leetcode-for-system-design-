@@ -9,6 +9,9 @@ import {
 } from "@xyflow/react";
 import { useEffect, useRef, useState } from "react";
 
+import type { EvaluationIssue } from "@/lib/api";
+
+import { useNodeAnnotations } from "./annotations-context";
 import { useHistory } from "./history-context";
 import { Shape, SHAPE_PER_KIND, TONE_COLORS } from "./shapes";
 import { COMPONENTS_BY_KIND, type ComponentDef, type ComponentKind } from "./types";
@@ -39,6 +42,10 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
   const activeTone: SketchdTone = d.tone ?? def.tone;
   const colors = TONE_COLORS[activeTone];
   const [w, h] = shape.size;
+
+  // Evaluation badges (rendered when this node has open issues anchored to it).
+  const annotations = useNodeAnnotations(id);
+  const [annotationsOpen, setAnnotationsOpen] = useState(false);
 
   const { setNodes, setEdges } = useReactFlow();
   const history = useHistory();
@@ -206,7 +213,81 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
         <SideHandle position={Position.Right}  id="right" />
         <SideHandle position={Position.Bottom} id="bottom" />
         <SideHandle position={Position.Left}   id="left" />
+
+        {annotations && annotations.issues.length > 0 && (
+          <AnnotationBadge
+            issues={annotations.issues}
+            open={annotationsOpen}
+            onToggle={() => setAnnotationsOpen((o) => !o)}
+          />
+        )}
       </div>
+    </>
+  );
+}
+
+// ─── Annotation badge (top-right of node) ────────────────────────────────────
+const SEVERITY_RANK = { low: 0, medium: 1, high: 2 } as const;
+const BADGE_BG = {
+  low:    "bg-amber",
+  medium: "bg-coral",
+  high:   "bg-red",
+} as const;
+
+function AnnotationBadge({
+  issues, open, onToggle,
+}: {
+  issues: EvaluationIssue[];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  // Worst severity drives the badge color.
+  const worst = issues.reduce<EvaluationIssue["severity"]>(
+    (acc, i) => (SEVERITY_RANK[i.severity] > SEVERITY_RANK[acc] ? i.severity : acc),
+    "low",
+  );
+  const bg = BADGE_BG[worst];
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        onMouseDown={(e) => e.stopPropagation()}
+        title={`${issues.length} ${issues.length === 1 ? "issue" : "issues"} flagged`}
+        className={
+          "nodrag absolute -right-2 -top-2 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold text-white shadow-md transition hover:scale-110 " +
+          bg
+        }
+      >
+        !{issues.length > 1 ? <span className="ml-0.5">{issues.length}</span> : null}
+      </button>
+      {open && (
+        <div
+          className="nodrag absolute left-full top-0 z-20 ml-2 w-[240px] rounded-lg border border-rule bg-white p-2 shadow-lg"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-ink-muted">
+            Flagged ({issues.length})
+          </div>
+          <ul className="list-none space-y-1.5 p-0">
+            {issues.map((i, idx) => (
+              <li key={idx} className="text-[11.5px] leading-[1.4]">
+                <span
+                  className={
+                    "mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle " + BADGE_BG[i.severity]
+                  }
+                />
+                <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-ink-muted">
+                  {i.category}
+                </span>
+                <p className="m-0 mt-0.5 text-ink">{i.text}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </>
   );
 }

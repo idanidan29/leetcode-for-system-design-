@@ -2,10 +2,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.auth.router import router as auth_router
 from app.core.config import settings
-from app.evaluation.router import router as evaluation_router
+from app.core.limiter import limiter
+from app.evaluation.router import hints_router, router as evaluation_router
 from app.problems.router import router as problems_router
 from app.submissions.router import router as submissions_router
 
@@ -22,6 +26,12 @@ app = FastAPI(
     docs_url="/docs",
     lifespan=lifespan,
 )
+
+# Rate-limiter: attach state + middleware + 429 handler. Per-endpoint limits
+# are declared with `@limiter.limit(...)` on the route handlers.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,3 +51,4 @@ app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(problems_router, prefix=settings.api_prefix)
 app.include_router(submissions_router, prefix=settings.api_prefix)
 app.include_router(evaluation_router, prefix=settings.api_prefix)
+app.include_router(hints_router, prefix=settings.api_prefix)

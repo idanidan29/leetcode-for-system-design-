@@ -29,6 +29,66 @@ export type SubmissionUpdate = components["schemas"]["SubmissionUpdate"];
 export type SubmissionListResponse = components["schemas"]["SubmissionListResponse"];
 export type EvaluationStatus = components["schemas"]["EvaluationStatus"];
 
+// Mirrors apps/api/app/evaluation/schemas.py. The stored evaluation on a
+// submission row is typed as a free-form dict on the backend (it lives in
+// JSONB), so the OpenAPI doesn't expose this shape — we declare it here.
+export type EvaluationCategory =
+  | "correctness"
+  | "scalability"
+  | "reliability"
+  | "performance"
+  | "security";
+
+export interface CategoryScore {
+  value: number;
+  max: number;
+  rationale: string;
+}
+
+export interface EvaluationIssue {
+  severity: "low" | "medium" | "high";
+  category: string;
+  text: string;
+  /** Node ids from the candidate's diagram this issue concerns (may be empty). */
+  node_ids?: string[];
+}
+
+export interface Evaluation {
+  scores: Partial<Record<EvaluationCategory, CategoryScore>>;
+  strengths: string[];
+  issues: EvaluationIssue[];
+  suggestions: string[];
+}
+
+export interface Hint {
+  level: 1 | 2 | 3;
+  text: string;
+}
+
+export interface HintsResponse {
+  hints: Hint[];
+}
+
+// Reference-solution payload from POST /problems/{id}/solution. Positions are
+// deliberately absent — the frontend computes a layout.
+export interface SolutionNode {
+  id: string;
+  type: string;
+  label: string;
+}
+export interface SolutionEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string | null;
+}
+export interface SolutionResponse {
+  nodes: SolutionNode[];
+  edges: SolutionEdge[];
+  rationale: Record<string, string>;
+  narrative: string;
+}
+
 // ─── Errors ───────────────────────────────────────────────────────────────────
 export class ApiError extends Error {
   constructor(
@@ -111,6 +171,19 @@ export const problems = {
   },
 
   get: (id: string) => apiFetch<Problem>(`/problems/${encodeURIComponent(id)}`),
+
+  /** Get 3 progressive hints tailored to the current (unsaved) diagram. */
+  hints: (id: string, diagram: Diagram) =>
+    apiFetch<HintsResponse>(`/problems/${encodeURIComponent(id)}/hints`, {
+      method: "POST",
+      body: JSON.stringify({ diagram }),
+    }),
+
+  /** Generate a reference solution for this problem. Server-cached per problem. */
+  solution: (id: string) =>
+    apiFetch<SolutionResponse>(`/problems/${encodeURIComponent(id)}/solution`, {
+      method: "POST",
+    }),
 };
 
 // ─── Submissions endpoints ────────────────────────────────────────────────────
@@ -146,4 +219,19 @@ export const submissions = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+
+  /** Run the LLM evaluation. Returns the updated submission with evaluation set.
+   *  `notes` is the candidate's free-form explanation — the LLM treats it as
+   *  evidence alongside the diagram. */
+  evaluate: (id: string, notes: string = "") =>
+    apiFetch<Submission>(`/submissions/${encodeURIComponent(id)}/evaluate`, {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+    }),
+
+  /** Fetch the stored evaluation payload (null if it hasn't run yet). */
+  getEvaluation: (id: string) =>
+    apiFetch<Evaluation | null>(
+      `/submissions/${encodeURIComponent(id)}/evaluation`,
+    ),
 };

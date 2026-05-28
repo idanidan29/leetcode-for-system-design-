@@ -11,7 +11,11 @@ export type ShapeKind =
   | "diamond"
   | "hexagon"
   | "cylinder"
-  | "cloud";
+  | "cloud"
+  | "barrel"         // cylinder w/ horizontal stripes — indexed storage
+  | "chevron"        // right-pointing pentagon — realtime push
+  | "circle"         // worker / async compute
+  | "parallelogram"; // slanted rect — flowing data
 
 export interface ShapeDef {
   shape: ShapeKind;
@@ -31,14 +35,20 @@ export const SHAPE_PER_KIND: Record<ComponentKind, ShapeDef> = {
   "microservice":   { shape: "rect",      size: [140, 68] },
   "external-api":   { shape: "rect-dash", size: [140, 68] },
   "custom":         { shape: "rect",      size: [150, 72] },
+  "search-index":     { shape: "barrel",        size: [130, 86] },
+  "websocket-gateway":{ shape: "chevron",       size: [160, 70] },
+  "worker":           { shape: "circle",        size: [90, 90] },
+  "stream-processor": { shape: "parallelogram", size: [150, 68] },
+  "analytics-db":     { shape: "cylinder",      size: [120, 90] },
 };
 
 export const TONE_COLORS: Record<string, { stroke: string; fill: string }> = {
-  coral: { stroke: "var(--color-coral)",     fill: "rgba(255, 106, 61, 0.13)" },
-  amber: { stroke: "var(--color-amber)",     fill: "rgba(243, 185, 65, 0.18)" },
-  blue:  { stroke: "var(--color-blue)",      fill: "rgba(59, 130, 246, 0.10)" },
-  acid:  { stroke: "#5a7d10",                fill: "rgba(181, 242, 58, 0.18)" },
-  ink:   { stroke: "var(--color-ink-muted)", fill: "#ffffff"                  },
+  coral:  { stroke: "var(--color-coral)",     fill: "rgba(255, 106, 61, 0.13)" },
+  amber:  { stroke: "var(--color-amber)",     fill: "rgba(243, 185, 65, 0.18)" },
+  blue:   { stroke: "var(--color-blue)",      fill: "rgba(59, 130, 246, 0.10)"  },
+  acid:   { stroke: "#5a7d10",                fill: "rgba(181, 242, 58, 0.18)" },
+  ink:    { stroke: "var(--color-ink-muted)", fill: "#ffffff"                  },
+  violet: { stroke: "#7c3aed",                fill: "rgba(124, 58, 237, 0.12)" },
 };
 
 // ─── Shape SVGs ──────────────────────────────────────────────────────────────
@@ -163,6 +173,73 @@ export function Shape({
         `C ${w * 0.98},${h * 0.78} ${w * 0.85},${h * 0.95} ${w * 0.70},${h * 0.85} ` +
         `Z`;
       return <path d={path} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />;
+    }
+
+    case "barrel": {
+      // Cylinder with horizontal stripes — reads as an indexed/sharded store.
+      const capH = h * 0.16;
+      const r = w / 2 - sw / 2;
+      const stripeYs = [h * 0.35, h * 0.55, h * 0.75];
+      return (
+        <g>
+          <rect x={sw / 2} y={capH} width={w - sw} height={h - capH * 2} fill={fill} />
+          <line x1={sw / 2} y1={capH} x2={sw / 2} y2={h - capH} stroke={stroke} strokeWidth={sw} />
+          <line x1={w - sw / 2} y1={capH} x2={w - sw / 2} y2={h - capH} stroke={stroke} strokeWidth={sw} />
+          <path
+            d={`M ${sw / 2},${h - capH} a ${r},${capH} 0 0 0 ${w - sw},0`}
+            fill={fill} stroke={stroke} strokeWidth={sw}
+          />
+          {stripeYs.map((y, i) => (
+            <line
+              key={i}
+              x1={sw / 2 + 4} y1={y} x2={w - sw / 2 - 4} y2={y}
+              stroke={stroke} strokeWidth={1} opacity={0.45}
+            />
+          ))}
+          <ellipse
+            cx={w / 2} cy={capH}
+            rx={r} ry={capH - sw / 2}
+            fill={fill} stroke={stroke} strokeWidth={sw}
+          />
+        </g>
+      );
+    }
+
+    case "chevron": {
+      // Right-pointing pentagon — suggests directional / streaming push.
+      const point = w * 0.16;
+      const pts = [
+        `${sw},${sw}`,
+        `${w - point},${sw}`,
+        `${w - sw},${h / 2}`,
+        `${w - point},${h - sw}`,
+        `${sw},${h - sw}`,
+      ].join(" ");
+      return <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />;
+    }
+
+    case "circle": {
+      // Pure compute unit — workers, async jobs.
+      const r = Math.min(w, h) / 2 - sw / 2;
+      return (
+        <circle
+          cx={w / 2} cy={h / 2}
+          r={r}
+          fill={fill} stroke={stroke} strokeWidth={sw}
+        />
+      );
+    }
+
+    case "parallelogram": {
+      // Slanted rectangle — classic "data in motion" flowchart symbol.
+      const slant = h * 0.35;
+      const pts = [
+        `${slant},${sw}`,
+        `${w - sw},${sw}`,
+        `${w - slant},${h - sw}`,
+        `${sw},${h - sw}`,
+      ].join(" ");
+      return <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />;
     }
   }
 }

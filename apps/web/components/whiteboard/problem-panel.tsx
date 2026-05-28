@@ -3,29 +3,148 @@
 import { useState } from "react";
 
 import { DIFF_STYLE } from "@/components/problem-card";
-import type { Problem } from "@/lib/api";
+import type { Evaluation, Hint, Problem } from "@/lib/api";
+
+import { EvaluationPanel } from "./evaluation-panel";
+import { HintsPanel } from "./hints-panel";
+
+type EvalState =
+  | { kind: "idle" }
+  | { kind: "running" }
+  | { kind: "done" }
+  | { kind: "error"; message: string };
+
+type HintsState =
+  | { kind: "idle" }
+  | { kind: "running" }
+  | { kind: "ready"; hints: Hint[] }
+  | { kind: "error"; message: string };
 
 interface Props {
   problem: Problem | null;
   problemError: string | null;
   notes: string;
   onNotesChange: (v: string) => void;
+  evaluation?: Evaluation | null;
+  evalState?: EvalState;
+  hintsState?: HintsState;
+  onResetHints?: () => void;
+  /** Click-an-issue → pan/zoom that node into view + select it. */
+  onFocusNode?: (nodeId: string) => void;
 }
 
 export function ProblemPanel(props: Props) {
+  const hasFeedback =
+    !!props.evaluation ||
+    props.evalState?.kind === "running" ||
+    props.evalState?.kind === "error";
+
+  const hasHints =
+    props.hintsState?.kind === "ready" ||
+    props.hintsState?.kind === "running" ||
+    props.hintsState?.kind === "error";
+
   return (
     <aside className="flex w-[360px] shrink-0 flex-col border-l border-rule bg-paper">
       <div className="flex-1 overflow-y-auto">
-        <Section title="Problem" defaultOpen>
+        <Section title="Problem" defaultOpen={!hasFeedback && !hasHints}>
           <ProblemSection problem={props.problem} error={props.problemError} />
         </Section>
 
-        <Section title="Your notes" defaultOpen>
+        {hasHints && (
+          <Section title="Hints" defaultOpen>
+            <HintsSection
+              state={props.hintsState ?? { kind: "idle" }}
+              onReset={props.onResetHints}
+            />
+          </Section>
+        )}
+
+        <Section title="AI Feedback" defaultOpen={hasFeedback}>
+          <FeedbackSection
+            evaluation={props.evaluation ?? null}
+            evalState={props.evalState ?? { kind: "idle" }}
+            onFocusNode={props.onFocusNode}
+          />
+        </Section>
+
+        <Section title="Your notes" defaultOpen={false}>
           <NotesSection notes={props.notes} onChange={props.onNotesChange} />
         </Section>
       </div>
     </aside>
   );
+}
+
+function HintsSection({
+  state, onReset,
+}: {
+  state: HintsState;
+  onReset?: () => void;
+}) {
+  if (state.kind === "running") {
+    return (
+      <div className="space-y-2 py-2">
+        <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em] text-amber">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber" />
+          Reading your diagram…
+        </div>
+        <p className="text-[12px] leading-[1.45] text-ink-muted">
+          Crafting three hints based on what you&apos;ve drawn.
+        </p>
+      </div>
+    );
+  }
+  if (state.kind === "error") {
+    return <p className="text-[12.5px] leading-[1.5] text-red">{state.message}</p>;
+  }
+  if (state.kind === "ready") {
+    return <HintsPanel hints={state.hints} onReset={onReset} />;
+  }
+  return null;
+}
+
+// ─── Feedback section ────────────────────────────────────────────────────────
+function FeedbackSection({
+  evaluation, evalState, onFocusNode,
+}: {
+  evaluation: Evaluation | null;
+  evalState: EvalState;
+  onFocusNode?: (nodeId: string) => void;
+}) {
+  if (evalState.kind === "running") {
+    return (
+      <div className="space-y-2 py-2">
+        <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em] text-coral">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-coral" />
+          Scoring your design…
+        </div>
+        <p className="text-[12px] leading-[1.45] text-ink-muted">
+          The model is reading your diagram against the problem rubric.
+          This usually takes 3–8 seconds.
+        </p>
+      </div>
+    );
+  }
+
+  if (evalState.kind === "error") {
+    return (
+      <p className="text-[12.5px] leading-[1.5] text-red">
+        {evalState.message}
+      </p>
+    );
+  }
+
+  if (!evaluation) {
+    return (
+      <p className="text-[12.5px] leading-[1.5] text-ink-muted">
+        Click <span className="font-medium text-ink">Evaluate</span> in the
+        toolbar to get structured feedback against the problem&apos;s rubric.
+      </p>
+    );
+  }
+
+  return <EvaluationPanel evaluation={evaluation} onFocusNode={onFocusNode} />;
 }
 
 // ─── Collapsible section ──────────────────────────────────────────────────────
@@ -180,7 +299,8 @@ function NotesSection({ notes, onChange }: { notes: string; onChange: (v: string
         className="w-full resize-y rounded-[10px] border border-rule bg-white px-3 py-2.5 text-[13px] leading-[1.5] text-ink shadow-sm outline-none placeholder:text-ink-muted/70 transition focus:border-ink focus:ring-2 focus:ring-coral/30"
       />
       <p className="mt-1.5 text-[11px] text-ink-muted">
-        Saved with your design. Useful as a thinking log while you sketch.
+        The evaluator reads these alongside your diagram, so explain anything
+        the canvas doesn&apos;t show.
       </p>
     </div>
   );
