@@ -6,6 +6,7 @@ import { SHAPE_PER_KIND, Shape, TONE_COLORS } from "./shapes";
 import {
   CATEGORY_ORDER,
   COMPONENTS,
+  PATTERN_CATEGORY_ORDER,
   type ComponentCategory,
   type ComponentDef,
   type ComponentKind,
@@ -13,10 +14,24 @@ import {
 
 interface Props {
   onAdd: (kind: ComponentKind) => void;
+  /** Which discipline of components to show. Defaults to system design so
+   *  the existing draw flow keeps working when no problem is loaded yet. */
+  discipline?: "system" | "pattern";
 }
 
-export function Palette({ onAdd }: Props) {
+export function Palette({ onAdd, discipline = "system" }: Props) {
   const [query, setQuery] = useState("");
+
+  // Only show components whose discipline matches (or "both", for Custom).
+  const available = useMemo(
+    () =>
+      COMPONENTS.filter(
+        (c) => c.discipline === discipline || c.discipline === "both",
+      ),
+    [discipline],
+  );
+  const categoryOrder: ComponentCategory[] =
+    discipline === "pattern" ? PATTERN_CATEGORY_ORDER : CATEGORY_ORDER;
 
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -27,14 +42,15 @@ export function Palette({ onAdd }: Props) {
       return (c.aliases ?? []).some((a) => a.toLowerCase().includes(q));
     };
     const out = new Map<ComponentCategory, ComponentDef[]>();
-    for (const cat of CATEGORY_ORDER) out.set(cat, []);
-    for (const c of COMPONENTS) {
-      if (matches(c)) out.get(c.category)!.push(c);
+    for (const cat of categoryOrder) out.set(cat, []);
+    for (const c of available) {
+      if (matches(c)) out.get(c.category)?.push(c);
     }
     return out;
-  }, [query]);
+  }, [query, available, categoryOrder]);
 
   const totalMatches = [...grouped.values()].reduce((n, arr) => n + arr.length, 0);
+  const totalAvailable = available.length;
 
   return (
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-rule bg-white">
@@ -45,7 +61,7 @@ export function Palette({ onAdd }: Props) {
             Components
           </span>
           <span className="font-mono text-[9.5px] text-ink-muted/80">
-            {totalMatches}/{COMPONENTS.length}
+            {totalMatches}/{totalAvailable}
           </span>
         </div>
         <div className="relative">
@@ -74,7 +90,7 @@ export function Palette({ onAdd }: Props) {
             <span className="font-mono text-ink">&ldquo;{query}&rdquo;</span>.
           </p>
         ) : (
-          CATEGORY_ORDER.map((cat) => {
+          categoryOrder.map((cat) => {
             const items = grouped.get(cat) ?? [];
             if (items.length === 0) return null;
             return (

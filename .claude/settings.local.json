@@ -18,7 +18,8 @@
       "Bash(rm -f /tmp/sdip_cookies.txt)",
       "Bash(curl -s -c /tmp/sdip_cookies.txt -w '\\\\n  HTTP %{http_code}\\\\n' -X POST http://localhost:8000/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"__TRACKED_VAR__\",\"password\":\"hunter2hunter\",\"display_name\":\"Smoke Test\"}')",
       "Read(//tmp/**)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(curl -s --max-time 3 http://localhost:8000/api/v1/problems)"
     ]
   }
 }

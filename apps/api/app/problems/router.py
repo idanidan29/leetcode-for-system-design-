@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.types import String
 
-from app.db.models import Difficulty, Problem
+from app.db.models import Difficulty, Problem, ProblemKind
 from app.db.session import get_session
 from app.problems.schemas import ProblemListResponse, ProblemRead
 
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/problems", tags=["problems"])
 @router.get("", response_model=ProblemListResponse)
 async def list_problems(
     session: Annotated[AsyncSession, Depends(get_session)],
+    kind: ProblemKind | None = None,
     difficulty: Difficulty | None = None,
     tags: Annotated[list[str] | None, Query()] = None,
     cursor: Annotated[str | None, Query(description="Last seen problem id from previous page")] = None,
@@ -23,6 +24,9 @@ async def list_problems(
 ) -> ProblemListResponse:
     """List problems with optional filters and cursor pagination."""
     stmt = select(Problem).order_by(Problem.id)
+
+    if kind is not None:
+        stmt = stmt.where(Problem.kind == kind)
 
     if difficulty is not None:
         stmt = stmt.where(Problem.difficulty == difficulty)

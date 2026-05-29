@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Difficulty, Problem
+from app.db.models import Difficulty, Problem, ProblemKind
 from app.db.session import AsyncSessionMaker, engine
 
 PROBLEMS: list[dict[str, Any]] = [
@@ -304,6 +304,91 @@ PROBLEMS: list[dict[str, Any]] = [
             "max_value_size_kb": 1_024,
         },
         "tags": ["consistent-hash", "eviction", "replication"],
+    },
+    # ─── Design pattern problems ──────────────────────────────────────────────
+    # Pattern problems are framed by a single statement — the "what to build"
+    # is the whole prompt. FR/NFR/constraints stay empty (the panel hides
+    # them); tags carry the GoF category for filtering.
+    {
+        "id": "singleton-config",
+        "title": "Singleton: app-wide configuration store",
+        "kind": ProblemKind.design_pattern,
+        "difficulty": Difficulty.easy,
+        "statement": (
+            "Design a configuration store that any module in an application can read "
+            "from. There must be exactly one instance for the lifetime of the process, "
+            "lazily initialized on first access, and safe to use from multiple threads. "
+            "Sketch the class structure: who owns the instance, how it's accessed, and "
+            "what stops a second copy from being created."
+        ),
+        "functional_requirements": [],
+        "non_functional_requirements": [],
+        "constraints": {},
+        "tags": ["creational", "singleton", "thread-safety"],
+    },
+    {
+        "id": "observer-stock-ticker",
+        "title": "Observer: stock price ticker",
+        "kind": ProblemKind.design_pattern,
+        "difficulty": Difficulty.easy,
+        "statement": (
+            "Design a stock price ticker where many displays (web dashboard, mobile "
+            "widget, audit log) react to price updates without the price feed knowing "
+            "about any specific display. Sketch the Subject + Observer relationship so "
+            "new display types can plug in without modifying the publisher."
+        ),
+        "functional_requirements": [],
+        "non_functional_requirements": [],
+        "constraints": {},
+        "tags": ["behavioral", "observer", "pub-sub"],
+    },
+    {
+        "id": "factory-shape-renderer",
+        "title": "Factory Method: shape renderer",
+        "kind": ProblemKind.design_pattern,
+        "difficulty": Difficulty.medium,
+        "statement": (
+            "Design a drawing library where a single factory call creates the right "
+            "Shape subclass (Circle, Square, Triangle, …) based on a string identifier. "
+            "Sketch the class hierarchy so adding a new shape never touches the callers "
+            "that ask for shapes."
+        ),
+        "functional_requirements": [],
+        "non_functional_requirements": [],
+        "constraints": {},
+        "tags": ["creational", "factory", "open-closed"],
+    },
+    {
+        "id": "strategy-checkout",
+        "title": "Strategy: checkout pricing rules",
+        "kind": ProblemKind.design_pattern,
+        "difficulty": Difficulty.medium,
+        "statement": (
+            "Design a checkout calculator that applies pricing rules: percent-off "
+            "coupons, fixed-amount discounts, buy-one-get-one, free shipping. Sketch "
+            "the Cart + Strategy structure so the cart accepts any combination of "
+            "rules without growing an if/else chain when marketing invents a new promo."
+        ),
+        "functional_requirements": [],
+        "non_functional_requirements": [],
+        "constraints": {},
+        "tags": ["behavioral", "strategy", "composition"],
+    },
+    {
+        "id": "decorator-coffee-shop",
+        "title": "Decorator: coffee shop add-ons",
+        "kind": ProblemKind.design_pattern,
+        "difficulty": Difficulty.medium,
+        "statement": (
+            "Design pricing for a coffee shop where a Beverage can be wrapped in any "
+            "combination of add-ons (Milk, Sugar, Whip, ExtraShot) — each adds to the "
+            "cost and to the description. Sketch the wrapper hierarchy so you avoid "
+            "the combinatorial explosion of MilkWhipEspresso subclasses."
+        ),
+        "functional_requirements": [],
+        "non_functional_requirements": [],
+        "constraints": {},
+        "tags": ["structural", "decorator", "composition"],
     },
 ]
 

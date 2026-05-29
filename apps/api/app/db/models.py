@@ -16,6 +16,17 @@ class Difficulty(str, Enum):
     hard = "hard"
 
 
+class ProblemKind(str, Enum):
+    """Which discipline a problem belongs to.
+
+    The two tracks have different palettes, AI rubrics, and reference
+    solution shapes, so the kind is the primary axis we filter and route on.
+    """
+
+    system_design = "system_design"
+    design_pattern = "design_pattern"
+
+
 class EvaluationStatus(str, Enum):
     pending = "pending"
     running = "running"
@@ -38,6 +49,7 @@ class Problem(SQLModel, table=True):
 
     id: str = Field(primary_key=True)
     title: str
+    kind: ProblemKind = Field(default=ProblemKind.system_design, index=True)
     difficulty: Difficulty
     statement: str
     functional_requirements: list[str] = Field(default_factory=list, sa_column=Column(JSONB))

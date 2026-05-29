@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from app.db.models import Difficulty
+from app.db.models import Difficulty, ProblemKind
 
 
 class ProblemRead(BaseModel):
@@ -13,6 +13,7 @@ class ProblemRead(BaseModel):
 
     id: str
     title: str
+    kind: ProblemKind
     difficulty: Difficulty
     statement: str
     functional_requirements: list[str]

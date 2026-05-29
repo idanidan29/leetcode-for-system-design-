@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -288,9 +287,6 @@ export function BadgesProvider({ children }: { children: ReactNode }) {
 
   const [open, setOpen] = useState<EarnedTrack | null>(null);
   const [toasts, setToasts] = useState<UnlockToast[]>([]);
-  // Per-user "first load done" so we don't dump every existing badge as a toast
-  // on the first time we load data for that user this session.
-  const firstLoadDoneRef = useRef<Set<string>>(new Set());
 
   // Refetch on user change OR explicit refresh() call.
   useEffect(() => {
@@ -335,20 +331,26 @@ export function BadgesProvider({ children }: { children: ReactNode }) {
 
   // Detect newly earned tiers; persist seen set per-user so refresh() doesn't
   // re-fire the same toast, but a brand-new unlock still surfaces immediately.
+  //
+  // First-load detection is anchored to *localStorage presence*, not a React
+  // ref — refs are reset on every page load (so every sign-in would re-toast
+  // every existing badge) and double-fire under React strict mode in dev.
+  // A null `seenRaw` means "we've never written badges for this user on this
+  // browser before"; in that case we silently seed the cache and skip toasts.
   useEffect(() => {
     if (loading || !user) return;
     const key = `sk.badges.seen.${user.id}`;
     const seenRaw = window.localStorage.getItem(key);
+    const isFirstLoad = seenRaw === null;
     const seen = new Set<string>(seenRaw ? JSON.parse(seenRaw) : []);
     const currentTokens: string[] = [];
     const fresh: UnlockToast[] = [];
-    const isFirstLoad = !firstLoadDoneRef.current.has(user.id);
 
     for (const e of earned) {
       if (!e.currentTier) continue;
       for (const t of e.allEarnedTiers) currentTokens.push(`${e.track.id}:${t}`);
       const topToken = `${e.track.id}:${e.currentTier}`;
-      if (!seen.has(topToken) && !isFirstLoad) {
+      if (!isFirstLoad && !seen.has(topToken)) {
         fresh.push({
           id: `${topToken}-${Date.now()}`,
           track: e.track,
@@ -358,7 +360,6 @@ export function BadgesProvider({ children }: { children: ReactNode }) {
     }
     window.localStorage.setItem(key, JSON.stringify(currentTokens));
     if (fresh.length > 0) setToasts((prev) => [...prev, ...fresh]);
-    firstLoadDoneRef.current.add(user.id);
   }, [earned, loading, user]);
 
   const refresh = useCallback(() => setFetchToken((n) => n + 1), []);

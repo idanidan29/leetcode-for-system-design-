@@ -16,8 +16,15 @@ const API_URL =
 export type User = components["schemas"]["UserOut"];
 export type SignupInput = components["schemas"]["SignupRequest"];
 export type LoginInput = components["schemas"]["LoginRequest"];
-export type Problem = components["schemas"]["ProblemRead"];
-export type ProblemListResponse = components["schemas"]["ProblemListResponse"];
+// `kind` was added on the backend after the last codegen pass — intersect it
+// in until `npm run gen:api` is re-run, at which point this can collapse back
+// to a pure `components["schemas"]["ProblemRead"]` alias.
+export type ProblemKind = "system_design" | "design_pattern";
+export type Problem = components["schemas"]["ProblemRead"] & { kind: ProblemKind };
+export type ProblemListResponse = Omit<
+  components["schemas"]["ProblemListResponse"],
+  "items"
+> & { items: Problem[] };
 export type Difficulty = components["schemas"]["Difficulty"];
 
 export type Diagram = components["schemas"]["Diagram"];
@@ -32,12 +39,23 @@ export type EvaluationStatus = components["schemas"]["EvaluationStatus"];
 // Mirrors apps/api/app/evaluation/schemas.py. The stored evaluation on a
 // submission row is typed as a free-form dict on the backend (it lives in
 // JSONB), so the OpenAPI doesn't expose this shape — we declare it here.
+//
+// Two disciplines, two rubrics. System-design problems use the first five;
+// design-pattern problems use the last four (plus the shared `correctness`).
+// The panel renders whichever subset is actually present on a given response.
 export type EvaluationCategory =
+  // shared
   | "correctness"
+  // system design
   | "scalability"
   | "reliability"
   | "performance"
-  | "security";
+  | "security"
+  // design patterns
+  | "pattern_fidelity"
+  | "encapsulation"
+  | "extensibility"
+  | "simplicity";
 
 export interface CategoryScore {
   value: number;
@@ -153,6 +171,7 @@ export const auth = {
 
 // ─── Problems endpoints ───────────────────────────────────────────────────────
 export interface ListProblemsParams {
+  kind?: ProblemKind;
   difficulty?: Difficulty;
   tags?: string[];
   cursor?: string;
@@ -162,6 +181,7 @@ export interface ListProblemsParams {
 export const problems = {
   list: (params: ListProblemsParams = {}) => {
     const qs = new URLSearchParams();
+    if (params.kind) qs.set("kind", params.kind);
     if (params.difficulty) qs.set("difficulty", params.difficulty);
     if (params.cursor) qs.set("cursor", params.cursor);
     if (params.limit) qs.set("limit", String(params.limit));

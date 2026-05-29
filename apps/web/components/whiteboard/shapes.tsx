@@ -15,7 +15,8 @@ export type ShapeKind =
   | "barrel"         // cylinder w/ horizontal stripes — indexed storage
   | "chevron"        // right-pointing pentagon — realtime push
   | "circle"         // worker / async compute
-  | "parallelogram"; // slanted rect — flowing data
+  | "parallelogram"  // slanted rect — flowing data
+  | "note";          // UML note — rectangle with folded corner
 
 export interface ShapeDef {
   shape: ShapeKind;
@@ -40,6 +41,14 @@ export const SHAPE_PER_KIND: Record<ComponentKind, ShapeDef> = {
   "worker":           { shape: "circle",        size: [90, 90] },
   "stream-processor": { shape: "parallelogram", size: [150, 68] },
   "analytics-db":     { shape: "cylinder",      size: [120, 90] },
+  // UML kinds: solid rectangles for concrete things, dashed for abstractions.
+  // Note has its own folded-corner shape; abstract gets a slight size bump so
+  // it reads as a "base" class.
+  "uml-class":        { shape: "rect",          size: [150, 80] },
+  "uml-interface":    { shape: "rect-dash",     size: [150, 80] },
+  "uml-abstract":     { shape: "rect-dash",     size: [160, 84] },
+  "uml-enum":         { shape: "rect",          size: [140, 78] },
+  "uml-note":         { shape: "note",          size: [150, 80] },
 };
 
 export const TONE_COLORS: Record<string, { stroke: string; fill: string }> = {
@@ -240,6 +249,31 @@ export function Shape({
         `${sw},${h - sw}`,
       ].join(" ");
       return <polygon points={pts} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />;
+    }
+
+    case "note": {
+      // UML note — rectangle with the top-right corner folded over. The fold
+      // is drawn as a second polygon over the corner so it reads in any tone.
+      const fold = Math.min(w, h) * 0.22;
+      const body = [
+        `${sw},${sw}`,
+        `${w - fold},${sw}`,
+        `${w - sw},${fold}`,
+        `${w - sw},${h - sw}`,
+        `${sw},${h - sw}`,
+      ].join(" ");
+      const triangle = [
+        `${w - fold},${sw}`,
+        `${w - sw},${fold}`,
+        `${w - fold},${fold}`,
+      ].join(" ");
+      // Slightly darker tint on the fold so the corner reads as a turn-over.
+      return (
+        <g>
+          <polygon points={body} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+          <polygon points={triangle} fill={stroke} fillOpacity="0.18" stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
+        </g>
+      );
     }
   }
 }

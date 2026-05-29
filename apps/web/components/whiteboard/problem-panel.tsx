@@ -211,8 +211,15 @@ function ProblemSection({ problem, error }: { problem: Problem | null; error: st
       </h2>
       <p className="m-0 text-[13px] leading-[1.55] text-ink-soft">{problem.statement}</p>
 
-      <NestedList title="Functional requirements" items={problem.functional_requirements} dotColor="bg-coral" />
-      <NestedList title="Non-functional requirements" items={problem.non_functional_requirements} dotColor="bg-blue" />
+      {/* Some tracks (design-pattern problems) carry just the statement, with
+          no FR/NFR/constraints. Hide each section when its source is empty so
+          the panel doesn't render label-only stubs. */}
+      {problem.functional_requirements.length > 0 && (
+        <NestedList title="Functional requirements" items={problem.functional_requirements} dotColor="bg-coral" />
+      )}
+      {problem.non_functional_requirements.length > 0 && (
+        <NestedList title="Non-functional requirements" items={problem.non_functional_requirements} dotColor="bg-blue" />
+      )}
       {Object.keys(problem.constraints).length > 0 && (
         <NestedConstraints constraints={problem.constraints} />
       )}

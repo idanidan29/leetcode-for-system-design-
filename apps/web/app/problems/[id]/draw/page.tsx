@@ -228,6 +228,10 @@ export default function DrawPage() {
   const solutionRunning = solutionState.kind === "running";
   const saving = save.kind === "saving";
 
+  // Track which discipline we're in; the palette uses this too. AI features
+  // now have a parallel pattern-rubric path on the backend, so no gating.
+  const isPatternProblem = problem?.kind === "design_pattern";
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <Nav />
@@ -340,7 +344,10 @@ export default function DrawPage() {
 
       {/* Body */}
       <div className="flex min-h-0 flex-1">
-        <Palette onAdd={addNode} />
+        <Palette
+          onAdd={addNode}
+          discipline={isPatternProblem ? "pattern" : "system"}
+        />
         <div className="relative flex-1 bg-paper">
           {!bootstrapped ? (
             <div className="absolute inset-0 grid place-items-center text-[13px] text-ink-muted">

@@ -15,10 +15,20 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.db.models import Problem
+from app.db.models import Problem, ProblemKind
 from app.submissions.schemas import Diagram
 
 from .hints_prompt import HINTS_SYSTEM_PROMPT, build_hints_user_prompt
+from .pattern_prompts import (
+    PATTERN_ALLOWED_KINDS,
+    PATTERN_HINTS_SYSTEM_PROMPT,
+    PATTERN_REQUIRED_CATEGORIES,
+    PATTERN_SOLUTION_SYSTEM_PROMPT,
+    PATTERN_SYSTEM_PROMPT,
+    build_pattern_hints_user_prompt,
+    build_pattern_solution_user_prompt,
+    build_pattern_user_prompt,
+)
 from .prompt import (
     REQUIRED_CATEGORIES,
     SYSTEM_PROMPT,
@@ -79,10 +89,10 @@ def _diagram_fingerprint(problem_id: str, diagram: Diagram, notes: str = "") -> 
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _validate_evaluation(raw: str) -> Evaluation:
-    """Parse + validate LLM JSON. Also checks the rubric is complete."""
+def _validate_evaluation(raw: str, required: tuple[str, ...]) -> Evaluation:
+    """Parse + validate LLM JSON against the discipline's required rubric."""
     ev = Evaluation.model_validate_json(raw)
-    missing = [c for c in REQUIRED_CATEGORIES if c not in ev.scores]
+    missing = [c for c in required if c not in ev.scores]
     if missing:
         raise ValidationError.from_exception_data(
             "Evaluation",
@@ -106,6 +116,7 @@ async def evaluate(
 ) -> Evaluation:
     """Run an evaluation, with one retry on validation failure.
 
+    Dispatches the system prompt + required-rubric tuple by `problem.kind`.
     Raises EvaluationError on terminal failure (provider crash or schema
     failure on the retry).
     """
@@ -115,16 +126,23 @@ async def evaluate(
         logger.info("evaluation cache hit", extra={"problem_id": problem.id})
         return cached
 
-    user_msg = build_user_prompt(problem, diagram, notes)
+    if problem.kind == ProblemKind.design_pattern:
+        system_prompt = PATTERN_SYSTEM_PROMPT
+        user_msg = build_pattern_user_prompt(problem, diagram, notes)
+        required = PATTERN_REQUIRED_CATEGORIES
+    else:
+        system_prompt = SYSTEM_PROMPT
+        user_msg = build_user_prompt(problem, diagram, notes)
+        required = REQUIRED_CATEGORIES
 
     # First attempt.
     try:
-        raw = await provider.evaluate(SYSTEM_PROMPT, user_msg)
+        raw = await provider.evaluate(system_prompt, user_msg)
     except Exception as e:  # noqa: BLE001 — provider boundary; re-wrap
         raise EvaluationError(f"LLM provider failed: {e}") from e
 
     try:
-        ev = _validate_evaluation(raw)
+        ev = _validate_evaluation(raw, required)
     except (ValidationError, ValueError) as first_err:
         logger.warning(
             "evaluation validation failed, retrying once",
@@ -132,11 +150,11 @@ async def evaluate(
         )
         retry_msg = build_retry_prompt(previous_output=raw, error=str(first_err))
         try:
-            raw2 = await provider.evaluate(SYSTEM_PROMPT, retry_msg)
+            raw2 = await provider.evaluate(system_prompt, retry_msg)
         except Exception as e:  # noqa: BLE001
             raise EvaluationError(f"LLM provider failed on retry: {e}") from e
         try:
-            ev = _validate_evaluation(raw2)
+            ev = _validate_evaluation(raw2, required)
         except (ValidationError, ValueError) as second_err:
             raise EvaluationError(
                 f"LLM output failed schema validation twice: {second_err}"
@@ -158,6 +176,7 @@ async def generate_hints(
 
     Same shape as `evaluate`: validate, retry once on schema failure, cache by
     (problem_id, diagram_fingerprint). Separate cache from evaluations.
+    Dispatches the prompt set by `problem.kind`.
     """
     cache_key = _diagram_fingerprint(problem.id, diagram)
     cached = _HINTS_CACHE.get(cache_key)
@@ -165,10 +184,15 @@ async def generate_hints(
         logger.info("hints cache hit", extra={"problem_id": problem.id})
         return cached
 
-    user_msg = build_hints_user_prompt(problem, diagram)
+    if problem.kind == ProblemKind.design_pattern:
+        system_prompt = PATTERN_HINTS_SYSTEM_PROMPT
+        user_msg = build_pattern_hints_user_prompt(problem, diagram)
+    else:
+        system_prompt = HINTS_SYSTEM_PROMPT
+        user_msg = build_hints_user_prompt(problem, diagram)
 
     try:
-        raw = await provider.evaluate(HINTS_SYSTEM_PROMPT, user_msg)
+        raw = await provider.evaluate(system_prompt, user_msg)
     except Exception as e:  # noqa: BLE001
         raise EvaluationError(f"LLM provider failed: {e}") from e
 
@@ -177,7 +201,7 @@ async def generate_hints(
     except (ValidationError, ValueError) as first_err:
         retry_msg = build_retry_prompt(previous_output=raw, error=str(first_err))
         try:
-            raw2 = await provider.evaluate(HINTS_SYSTEM_PROMPT, retry_msg)
+            raw2 = await provider.evaluate(system_prompt, retry_msg)
         except Exception as e:  # noqa: BLE001
             raise EvaluationError(f"LLM provider failed on retry: {e}") from e
         try:
@@ -193,9 +217,9 @@ async def generate_hints(
     return resp
 
 
-def _validate_solution(raw: str) -> SolutionResponse:
+def _validate_solution(raw: str, allowed_kinds: tuple[str, ...]) -> SolutionResponse:
     """Parse + validate solution. Also enforces:
-    - every node.type is in ALLOWED_KINDS,
+    - every node.type is in `allowed_kinds`,
     - every edge.source/target references an existing node.
 
     These checks prevent the LLM from inventing component types or dangling
@@ -204,10 +228,10 @@ def _validate_solution(raw: str) -> SolutionResponse:
     sol = SolutionResponse.model_validate_json(raw)
     node_ids = {n.id for n in sol.nodes}
     for n in sol.nodes:
-        if n.type not in ALLOWED_KINDS:
+        if n.type not in allowed_kinds:
             raise ValueError(
                 f"node {n.id!r} has unknown type {n.type!r}; "
-                f"allowed: {', '.join(ALLOWED_KINDS)}"
+                f"allowed: {', '.join(allowed_kinds)}"
             )
     for e in sol.edges:
         if e.source not in node_ids or e.target not in node_ids:
@@ -225,30 +249,40 @@ async def generate_solution(
     """Generate a reference design for the given problem.
 
     Cached per problem — the reference design doesn't change with the user's
-    diagram.
+    diagram. Dispatches the prompt + allowed-kinds set by `problem.kind`.
     """
     cached = _SOLUTION_CACHE.get(problem.id)
     if cached is not None:
         logger.info("solution cache hit", extra={"problem_id": problem.id})
         return cached
 
-    user_msg = build_solution_user_prompt(problem)
+    # Annotate as a heterogeneous tuple of strings so mypy doesn't lock the
+    # variable to the first branch's exact length.
+    allowed_kinds: tuple[str, ...]
+    if problem.kind == ProblemKind.design_pattern:
+        system_prompt = PATTERN_SOLUTION_SYSTEM_PROMPT
+        user_msg = build_pattern_solution_user_prompt(problem)
+        allowed_kinds = PATTERN_ALLOWED_KINDS
+    else:
+        system_prompt = SOLUTION_SYSTEM_PROMPT
+        user_msg = build_solution_user_prompt(problem)
+        allowed_kinds = ALLOWED_KINDS
 
     try:
-        raw = await provider.evaluate(SOLUTION_SYSTEM_PROMPT, user_msg)
+        raw = await provider.evaluate(system_prompt, user_msg)
     except Exception as e:  # noqa: BLE001
         raise EvaluationError(f"LLM provider failed: {e}") from e
 
     try:
-        sol = _validate_solution(raw)
+        sol = _validate_solution(raw, allowed_kinds)
     except (ValidationError, ValueError) as first_err:
         retry_msg = build_retry_prompt(previous_output=raw, error=str(first_err))
         try:
-            raw2 = await provider.evaluate(SOLUTION_SYSTEM_PROMPT, retry_msg)
+            raw2 = await provider.evaluate(system_prompt, retry_msg)
         except Exception as e:  # noqa: BLE001
             raise EvaluationError(f"LLM provider failed on retry: {e}") from e
         try:
-            sol = _validate_solution(raw2)
+            sol = _validate_solution(raw2, allowed_kinds)
         except (ValidationError, ValueError) as second_err:
             raise EvaluationError(
                 f"LLM output failed schema validation twice: {second_err}"

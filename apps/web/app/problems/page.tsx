@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Nav } from "@/components/nav";
 import { ProblemCard, ProblemRow } from "@/components/problem-card";
-import { ApiError, problems as problemsApi, type Difficulty, type Problem } from "@/lib/api";
+import {
+  ApiError,
+  problems as problemsApi,
+  type Difficulty,
+  type Problem,
+  type ProblemKind,
+} from "@/lib/api";
 
 type Filter = "all" | Difficulty;
 type View = "grid" | "list";
@@ -16,19 +22,40 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "hard",   label: "Hard" },
 ];
 
+interface KindOption {
+  value: ProblemKind;
+  label: string;
+  blurb: string;
+}
+const KINDS: KindOption[] = [
+  {
+    value: "system_design",
+    label: "System Design",
+    blurb: "Architect services, caches, and queues against real-world scale.",
+  },
+  {
+    value: "design_pattern",
+    label: "Design Patterns",
+    blurb: "Implement classic OOP patterns: Singleton, Observer, Strategy…",
+  },
+];
+
 const VIEW_STORAGE_KEY = "sk.problems.view";
+const KIND_STORAGE_KEY = "sk.problems.kind";
 
 export default function ProblemsPage() {
   const [items, setItems] = useState<Problem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<View>("grid");
+  const [kind, setKind] = useState<ProblemKind>("system_design");
 
-  // Restore the user's last view choice. Read in a layout effect so we don't
-  // flash grid before swapping to list.
+  // Restore the user's last view + track choice.
   useEffect(() => {
-    const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
-    if (saved === "grid" || saved === "list") setView(saved);
+    const savedView = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    if (savedView === "grid" || savedView === "list") setView(savedView);
+    const savedKind = window.localStorage.getItem(KIND_STORAGE_KEY);
+    if (savedKind === "system_design" || savedKind === "design_pattern") setKind(savedKind);
   }, []);
 
   useEffect(() => {
@@ -36,28 +63,49 @@ export default function ProblemsPage() {
   }, [view]);
 
   useEffect(() => {
+    window.localStorage.setItem(KIND_STORAGE_KEY, kind);
+  }, [kind]);
+
+  // Reset the difficulty filter when switching tracks so a previously-selected
+  // pill doesn't silently wipe the new catalog if that pill has no matches.
+  useEffect(() => {
+    setFilter("all");
+  }, [kind]);
+
+  useEffect(() => {
     let cancelled = false;
+    setItems(null);
+    setError(null);
     problemsApi
-      .list({ limit: 100 })
+      .list({ kind, limit: 100 })
       .then((res) => {
         if (!cancelled) setItems(res.items);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(
-          err instanceof ApiError ? err.detail : "Couldn’t load problems.",
-        );
+        // Distinguish "backend returned an error" (ApiError, has a useful
+        // detail) from "request never reached the backend" (TypeError —
+        // typically "Failed to fetch"). The latter usually means the API
+        // process is down or an unapplied migration is crashing it.
+        const message = err instanceof ApiError
+          ? err.detail
+          : err instanceof TypeError
+            ? "Couldn’t reach the API — is the backend running and migrated?"
+            : "Couldn’t load problems.";
+        setError(message);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [kind]);
 
   const filtered = useMemo(() => {
     if (!items) return null;
     if (filter === "all") return items;
     return items.filter((p) => p.difficulty === filter);
   }, [items, filter]);
+
+  const activeKind = KINDS.find((k) => k.value === kind) ?? KINDS[0]!;
 
   return (
     <>
@@ -73,11 +121,12 @@ export default function ProblemsPage() {
               Pick a problem and start sketching.
             </h1>
             <p className="m-0 mt-3 max-w-[60ch] text-[16px] text-ink-soft">
-              Each prompt ships with explicit functional &amp; non-functional
-              requirements and real-world constraints. No vague &ldquo;design
-              Twitter&rdquo; energy.
+              {activeKind.blurb}
             </p>
           </header>
+
+          {/* Track toggle (system design / design patterns) */}
+          <KindToggle value={kind} onChange={setKind} />
 
           {/* Difficulty filter */}
           <div className="mb-7 flex flex-wrap gap-2">
@@ -138,6 +187,77 @@ export default function ProblemsPage() {
         </div>
       </main>
     </>
+  );
+}
+
+// ─── Track toggle (System Design / Design Patterns) ──────────────────────────
+// A larger segmented pill than the difficulty chips below it. Visually heavier
+// so the user reads it as "switch the whole catalog" rather than "narrow the
+// current one". Each option shows a small icon hinting at its discipline.
+// Segmented toggle with a sliding ink pill underneath the active label. The
+// pill translates between the two equal-width slots instead of one being
+// painted in and the other out — feels like a single physical control.
+function KindToggle({
+  value, onChange,
+}: {
+  value: ProblemKind;
+  onChange: (v: ProblemKind) => void;
+}) {
+  const activeIndex = KINDS.findIndex((k) => k.value === value);
+
+  return (
+    <div className="mb-7 relative inline-grid grid-cols-2 gap-0 rounded-full border border-rule bg-white p-1 shadow-sm">
+      {/* Sliding active pill — width is 50% of the inner area, translates by
+          100% of its own width to swap between slots. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-ink shadow-sm"
+        style={{
+          transform: `translateX(${activeIndex * 100}%)`,
+          transition: "transform 280ms cubic-bezier(0.4, 0.0, 0.2, 1)",
+        }}
+      />
+      {KINDS.map((k) => {
+        const active = k.value === value;
+        return (
+          <button
+            key={k.value}
+            type="button"
+            onClick={() => onChange(k.value)}
+            aria-pressed={active}
+            className={
+              "relative z-10 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium " +
+              "transition-colors duration-200 " +
+              (active ? "text-paper" : "text-ink-soft hover:text-ink")
+            }
+          >
+            {k.value === "system_design" ? <SystemIcon /> : <PatternIcon />}
+            {k.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SystemIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <rect x="1" y="1" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.3" />
+      <rect x="9" y="1" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.3" />
+      <rect x="5" y="9" width="4" height="4" rx="0.8" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M3 5v2M11 5v2M7 7v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PatternIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <rect x="1" y="1" width="5" height="5" rx="0.6" stroke="currentColor" strokeWidth="1.3" />
+      <rect x="8" y="8" width="5" height="5" rx="0.6" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M3.5 6v2M3.5 8h5M8.5 8V6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
   );
 }
 
