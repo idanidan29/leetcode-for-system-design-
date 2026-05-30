@@ -6,28 +6,19 @@ import type { Evaluation, EvaluationCategory, EvaluationIssue } from "@/lib/api"
 // that are actually present on `evaluation.scores`, so a pattern-rubric
 // response cleanly skips the system-design rows and vice versa.
 const CATEGORY_ORDER: EvaluationCategory[] = [
+  // system design (5 × 5 = 25 max)
   "correctness",
-  // system design
   "scalability",
   "reliability",
   "performance",
   "security",
-  // design patterns
-  "pattern_fidelity",
-  "encapsulation",
-  "extensibility",
-  "simplicity",
+  // design patterns (1 × 5 = 5 max)
+  "pattern",
 ];
 
-// Human-readable labels for the pattern categories (the system ones already
-// look fine as-is). `pattern_fidelity` would otherwise render as a snake-case
-// token in the UI.
-const CATEGORY_LABEL: Partial<Record<EvaluationCategory, string>> = {
-  pattern_fidelity: "pattern fidelity",
-};
-
 /** Aggregate percentage at or above which the problem counts as PASSED.
- *  Both rubrics are 5 categories × 5 points = 25 max, so this stays valid. */
+ *  Threshold is on a *ratio*, so it works for both the 25-max system rubric
+ *  (≥20) and the 5-max pattern rubric (≥4). */
 export const PASS_THRESHOLD = 0.8;
 
 const SEVERITY_STYLE: Record<EvaluationIssue["severity"], string> = {
@@ -138,7 +129,7 @@ function Scores({ evaluation }: { evaluation: Evaluation }) {
           <div key={c}>
             <div className="mb-1 flex items-baseline justify-between gap-2">
               <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-soft">
-                {CATEGORY_LABEL[c] ?? c}
+                {c}
               </span>
               <span className="font-mono text-[10.5px] font-medium text-ink">
                 {s.value}/{s.max}

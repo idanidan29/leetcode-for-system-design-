@@ -269,6 +269,18 @@ export default function DrawPage() {
         </button>
 
         <button
+          type="button"
+          onClick={() => canvasRef.current?.clear()}
+          disabled={!bootstrapped || saving || evalRunning || hintRunning || solutionRunning}
+          title="Clear the board (Ctrl+Z to undo)"
+          className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border border-rule bg-white text-ink-soft transition hover:border-red hover:bg-red/5 hover:text-red disabled:cursor-progress disabled:opacity-60"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+            <path d="M3 4h8M5.5 4V2.5h3V4M4 4l.5 7.5h5L10 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        <button
           onClick={() => void handleShowSolution()}
           disabled={solutionRunning || evalRunning || hintRunning || saving || !bootstrapped}
           className="inline-flex items-center gap-1.5 rounded-[10px] border border-rule bg-white px-3 py-2 text-[12px] font-medium text-ink-soft transition hover:border-ink hover:text-ink disabled:cursor-progress disabled:opacity-60"

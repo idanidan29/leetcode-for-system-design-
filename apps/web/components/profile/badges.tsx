@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -288,12 +289,21 @@ export function BadgesProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState<EarnedTrack | null>(null);
   const [toasts, setToasts] = useState<UnlockToast[]>([]);
 
+  // Tracks which user.id we have *settled* data for. The toast effect only
+  // runs when this matches the current user — otherwise `subs` might still be
+  // empty from the previous session and we'd incorrectly overwrite the
+  // localStorage seen-set with `[]`, which would then make every existing
+  // badge look brand-new on the next render.
+  const fetchedForUserRef = useRef<string | null>(null);
+
   // Refetch on user change OR explicit refresh() call.
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
       setSubs([]);
       setProblemById(new Map());
+      // Forget any prior fetch — next sign-in must wait for fresh data.
+      fetchedForUserRef.current = null;
       return;
     }
     let cancelled = false;
@@ -316,7 +326,11 @@ export function BadgesProvider({ children }: { children: ReactNode }) {
         console.warn("badges fetch failed", err);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        // Mark the data settled *before* flipping loading so the toast
+        // effect sees a consistent (ref matches, loading flipped) state.
+        fetchedForUserRef.current = user.id;
+        setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -339,6 +353,11 @@ export function BadgesProvider({ children }: { children: ReactNode }) {
   // browser before"; in that case we silently seed the cache and skip toasts.
   useEffect(() => {
     if (loading || !user) return;
+    // Don't touch localStorage with stale data — on a re-login `earned` can
+    // briefly be empty before the fresh fetch lands. Wait for the fetch to
+    // settle the ref to this user.id before computing diffs.
+    if (fetchedForUserRef.current !== user.id) return;
+
     const key = `sk.badges.seen.${user.id}`;
     const seenRaw = window.localStorage.getItem(key);
     const isFirstLoad = seenRaw === null;

@@ -32,7 +32,7 @@ PATTERN_ALLOWED_KINDS = (
 # Pattern problems collapse to a single dimension: did the candidate
 # implement the pattern correctly? Splitting into scalability/extensibility/
 # etc. felt over-engineered for "draw a Singleton". One score, fine-grained.
-PATTERN_REQUIRED_CATEGORIES = ("pattern_fidelity",)
+PATTERN_REQUIRED_CATEGORIES = ("pattern",)
 
 
 PATTERN_SYSTEM_PROMPT = """\
@@ -57,7 +57,7 @@ the diagram and notes are empty/trivial, score zero.
 
 You score one dimension on a 0-5 scale:
 
-  pattern_fidelity — Did the candidate implement the pattern correctly?
+  pattern — Did the candidate implement the pattern correctly?
     This rolls together: are the canonical participants present (e.g. \
 Subject + Observer interface for Observer; Strategy interface + concrete \
 strategies for Strategy; Component + Decorator wrappers for Decorator), \
@@ -83,7 +83,7 @@ and the verdict.
 Then call out:
   - strengths  : up to 3 things the design does well (concrete, not generic).
   - issues     : concrete problems, each with severity (low | medium | high), \
-the category (always "pattern_fidelity"), and — when the issue is about \
+the category (always "pattern"), and — when the issue is about \
 specific components in the diagram — the node_ids array of the affected \
 nodes. Use the exact node IDs from the diagram (the part before the colon \
 in the NODES section). Leave node_ids as [] for issues about the design \
@@ -95,10 +95,10 @@ Match this schema exactly:
 
 {
   "scores": {
-    "pattern_fidelity": { "value": <0-5>, "max": 5, "rationale": "<one or two sentences>" }
+    "pattern": { "value": <0-5>, "max": 5, "rationale": "<one or two sentences>" }
   },
   "strengths":   ["<concrete strength>", ...],
-  "issues":      [ { "severity": "low|medium|high", "category": "pattern_fidelity", "text": "<problem statement>", "node_ids": ["<id>", ...] }, ... ],
+  "issues":      [ { "severity": "low|medium|high", "category": "pattern", "text": "<problem statement>", "node_ids": ["<id>", ...] }, ... ],
   "suggestions": ["<concrete improvement>", ...]
 }
 """
@@ -225,7 +225,7 @@ interview problem. Output a clean UML class diagram showing the canonical \
 GoF structure for the named pattern.
 
 CRITICAL: this solution is scored against the same rubric as the candidate. \
-It MUST score 4+ in each of these categories: correctness, pattern_fidelity, \
+It MUST score 4+ in each of these categories: correctness, pattern, \
 encapsulation, extensibility, simplicity. The diagram alone must be \
 sufficient — clear UML labels carry the design, no prose required.
 

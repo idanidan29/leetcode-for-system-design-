@@ -44,18 +44,14 @@ export type EvaluationStatus = components["schemas"]["EvaluationStatus"];
 // design-pattern problems use the last four (plus the shared `correctness`).
 // The panel renders whichever subset is actually present on a given response.
 export type EvaluationCategory =
-  // shared
-  | "correctness"
   // system design
+  | "correctness"
   | "scalability"
   | "reliability"
   | "performance"
   | "security"
-  // design patterns
-  | "pattern_fidelity"
-  | "encapsulation"
-  | "extensibility"
-  | "simplicity";
+  // design patterns (single-metric rubric — "did you implement the pattern?")
+  | "pattern";
 
 export interface CategoryScore {
   value: number;
