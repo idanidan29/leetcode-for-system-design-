@@ -1,14 +1,20 @@
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     api_prefix: str = "/api/v1"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # NoDecode disables pydantic-settings' default behavior of trying to
+    # JSON-decode list[str] env vars — that runs *before* our validator and
+    # would explode on a plain CSV string like "https://a.com,https://b.com".
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
 
     database_url: str = "postgresql+asyncpg://sdip:sdip@localhost:5432/sdip"
 
