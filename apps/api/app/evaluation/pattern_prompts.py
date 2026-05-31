@@ -14,6 +14,8 @@ from __future__ import annotations
 from app.db.models import Problem
 from app.submissions.schemas import Diagram
 
+from .prompt import _methods_of
+
 
 # ─── Allowed UML kinds for the solution generator ────────────────────────────
 # Matches the `discipline: "pattern"` entries in
@@ -47,9 +49,18 @@ composition diamonds, etc.), so judge intent by labels and topology, not \
 by arrow style.
 
 The DIAGRAM is the primary scoring artifact. A well-labeled UML sketch \
-alone — appropriate classes, interfaces, and relationships, with clear \
-labels — is sufficient to score 5/5. Do NOT withhold points because the \
-candidate didn't write prose; clear shapes and edges ARE the explanation.
+alone — appropriate classes, interfaces, methods, and relationships, with \
+clear labels — is sufficient to score 5/5. Do NOT withhold points because \
+the candidate didn't write prose; clear shapes, methods, and edges ARE the \
+explanation.
+
+Each class-like node may carry a list of method signatures (e.g. \
+`attach(observer)`, `notify()`, `update(data)`) — these appear as indented \
+bullets under the node's NODES entry. Treat present methods as first-class \
+evidence: a Subject node that lists `attach`, `detach`, and `notify` proves \
+the Observer pattern's notification mechanism even without a separate node. \
+Do not penalize a candidate for a "missing method" if the role is clearly \
+covered by another node's responsibilities.
 
 The CANDIDATE NOTES are a secondary input: bonus credit when the diagram \
 is sparse, but never required to reach 5 on a complete diagram. If both \
@@ -127,6 +138,8 @@ def build_pattern_user_prompt(problem: Problem, diagram: Diagram, notes: str = "
         for n in diagram.nodes:
             label = n.label.strip() if n.label.strip() else "(unlabeled)"
             parts.append(f"  {n.id}: {n.type} — {label}")
+            for m in _methods_of(n):
+                parts.append(f"      • {m}")
     parts.append("")
 
     parts.append("EDGES:")
@@ -200,6 +213,8 @@ def build_pattern_hints_user_prompt(problem: Problem, diagram: Diagram) -> str:
         for n in diagram.nodes:
             label = n.label.strip() if n.label.strip() else "(unlabeled)"
             parts.append(f"  {n.id}: {n.type} — {label}")
+            for m in _methods_of(n):
+                parts.append(f"      • {m}")
     parts.append("")
 
     parts.append("EDGES:")

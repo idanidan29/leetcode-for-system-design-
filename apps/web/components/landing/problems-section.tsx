@@ -75,7 +75,7 @@ export function ProblemsSection() {
             href="/problems"
             className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.1em] text-ink-muted transition hover:text-ink"
           >
-            Browse all 10
+            Browse all
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
               <path d="M1 7h12m0 0L8 2m5 5l-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>

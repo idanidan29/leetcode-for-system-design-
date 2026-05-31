@@ -8,6 +8,8 @@ later add prompt caching at the provider layer.
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.db.models import Problem
 from app.submissions.schemas import Diagram
 
@@ -84,6 +86,23 @@ REQUIRED_CATEGORIES = (
 )
 
 
+def _methods_of(node: Any) -> list[str]:
+    """Pull the methods list off a node's metadata, defensively.
+
+    Both disciplines render this the same way in their prompt — but the data
+    comes from a free-form JSONB column, so we sanity-check before iterating.
+    Lives here (and is re-imported by pattern_prompts) so we have one source
+    of truth for the format.
+    """
+    meta = getattr(node, "metadata", None)
+    if not isinstance(meta, dict):
+        return []
+    raw = meta.get("methods")
+    if not isinstance(raw, list):
+        return []
+    return [str(m).strip() for m in raw if isinstance(m, str) and m.strip()]
+
+
 def build_user_prompt(problem: Problem, diagram: Diagram, notes: str = "") -> str:
     """Render problem + diagram + notes into a compact, LLM-friendly string.
 
@@ -122,6 +141,11 @@ def build_user_prompt(problem: Problem, diagram: Diagram, notes: str = "") -> st
         for n in diagram.nodes:
             label = n.label.strip() if n.label.strip() else "(unlabeled)"
             parts.append(f"  {n.id}: {n.type} — {label}")
+            # Optional methods compartment (UML class-like nodes). Indented
+            # so the structure is obvious to the LLM.
+            methods = _methods_of(n)
+            for m in methods:
+                parts.append(f"      • {m}")
     parts.append("")
 
     parts.append("EDGES:")

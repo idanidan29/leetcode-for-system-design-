@@ -24,6 +24,12 @@ export type SketchdNodeData = {
   label: string;
   /** Optional tone override (used by Custom node color picker). */
   tone?: SketchdTone;
+  /** Optional method/function signatures shown in the UML methods compartment.
+   *  Only renders on rect-shaped nodes (uml-class / uml-interface / etc.); a
+   *  taller cylinder would just look wrong. Stored per-line as a free-form
+   *  string so users can write whatever convention they like ("update()",
+   *  "+ attach(o: Observer)", etc.). */
+  methods?: string[];
 } & Record<string, unknown>;
 
 const SWATCHES: { tone: SketchdTone; label: string; swatch: string }[] = [
@@ -54,6 +60,18 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
   const [draft, setDraft] = useState(d.label);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Methods/functions compartment (UML class-like nodes only). Each method is
+  // its own row with its own input + delete button. When the node is selected
+  // the rows are editable; otherwise they render as read-only text.
+  const methods: string[] = d.methods ?? [];
+  const methodInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // Index of a freshly-added row that should grab focus on the next render.
+  const [pendingFocus, setPendingFocus] = useState<number | null>(null);
+
+  // Only rect-shaped nodes get a useful methods compartment; on a cylinder
+  // or diamond the stretched shape would look wrong.
+  const canHaveMethods = shape.shape === "rect" || shape.shape === "rect-dash";
+
   useEffect(() => {
     if (!editing) setDraft(d.label);
   }, [d.label, editing]);
@@ -64,6 +82,35 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
       inputRef.current?.select();
     }
   }, [editing]);
+
+  useEffect(() => {
+    if (pendingFocus === null) return;
+    const el = methodInputRefs.current[pendingFocus];
+    if (el) {
+      el.focus();
+      // Cursor at end so the user can type immediately.
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+    setPendingFocus(null);
+  }, [pendingFocus]);
+
+  // When the node gets deselected, the method <input>s unmount without
+  // firing blur — so empty rows would linger and render as blank read-only
+  // lines. Drop them here.
+  useEffect(() => {
+    if (selected) return;
+    if (methods.some((m) => m.trim().length === 0)) {
+      const cleaned = methods.filter((m) => m.trim().length > 0);
+      setNodes((nodes) =>
+        nodes.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, methods: cleaned } } : n,
+        ),
+      );
+    }
+    // We intentionally don't depend on `methods` — only react to selection
+    // changes — otherwise this would race with addMethod's empty row.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   const commitLabel = () => {
     const trimmed = draft.trim();
@@ -81,6 +128,46 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
     setDraft(d.label);
     setEditing(false);
   };
+
+  // Helper to swap the methods array on this node. Each mutation pushes a
+  // history snapshot so Ctrl+Z can roll back individual add/edit/delete ops.
+  const setMethods = (next: string[]) => {
+    history.push();
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, methods: next } } : n,
+      ),
+    );
+  };
+
+  const addMethod = () => {
+    const next = [...methods, ""];
+    setMethods(next);
+    setPendingFocus(next.length - 1); // focus the new row on next render
+  };
+  const removeMethod = (i: number) => {
+    setMethods(methods.filter((_, idx) => idx !== i));
+  };
+  const updateMethod = (i: number, value: string) => {
+    setMethods(methods.map((m, idx) => (idx === i ? value : m)));
+  };
+  // After the user leaves an input, drop any empty rows so the saved data
+  // and the LLM-facing serialization stay clean. Only triggers when focus
+  // leaves the methods area entirely (not when tabbing between rows).
+  const trimEmptyMethods = () => {
+    const next = methods.filter((m) => m.trim().length > 0);
+    if (next.length !== methods.length) setMethods(next);
+  };
+
+  // Only show the compartment (divider + rows) when there's at least one
+  // method. An empty methods array means "no functions" — the node should
+  // look exactly like a plain class with no extra divider. Users add the
+  // first function via the ƒ() toolbar button.
+  const showCompartment = canHaveMethods && methods.length > 0;
+  const nodeHeight =
+    !showCompartment
+      ? h
+      : h + methodsCompartmentHeight(methods.length, !!selected);
 
   const setTone = (tone: SketchdTone) => {
     history.push();
@@ -116,6 +203,27 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
               />
             </svg>
           </ToolBtn>
+
+          {canHaveMethods && (
+            <ToolBtn
+              title="Add a function"
+              onClick={addMethod}
+            >
+              {/* Stylized fn() glyph — matches the "code" affordance. */}
+              <svg width="15" height="13" viewBox="0 0 18 14" fill="none">
+                <path
+                  d="M4 2c-1.6 0-2 1-2 2v6c0 1 .4 2 2 2M14 2c1.6 0 2 1 2 2v6c0 1-.4 2-2 2"
+                  stroke="currentColor" strokeWidth="1.4"
+                  strokeLinecap="round" strokeLinejoin="round"
+                />
+                <path
+                  d="M7 5h1.5l1 4M11 5l-1.5 4"
+                  stroke="currentColor" strokeWidth="1.4"
+                  strokeLinecap="round" strokeLinejoin="round"
+                />
+              </svg>
+            </ToolBtn>
+          )}
 
           {isCustom && (
             <>
@@ -154,7 +262,7 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
 
       <div
         className={"relative transition-all " + (selected ? "sk-node-selected" : "")}
-        style={{ width: w, height: h }}
+        style={{ width: w, height: nodeHeight }}
         onDoubleClick={(e) => {
           e.stopPropagation();
           setEditing(true);
@@ -164,14 +272,29 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
           className="absolute inset-0"
           width="100%"
           height="100%"
-          viewBox={`0 0 ${w} ${h}`}
+          viewBox={`0 0 ${w} ${nodeHeight}`}
           preserveAspectRatio="none"
         >
-          <Shape kind={shape.shape} w={w} h={h} stroke={colors.stroke} fill={colors.fill} />
+          <Shape
+            kind={shape.shape}
+            w={w}
+            h={nodeHeight}
+            stroke={colors.stroke}
+            fill={colors.fill}
+          />
         </svg>
 
-        <div className="relative grid h-full place-items-center px-3 text-center leading-tight">
-          <div className="w-full">
+        <div className="relative flex h-full flex-col px-3 py-2 text-center leading-tight">
+          {/* Header section — stereotype + class name. Centered vertically
+              when the methods compartment is hidden, top-aligned otherwise. */}
+          <div
+            className={
+              "w-full " +
+              (showCompartment
+                ? "shrink-0"
+                : "flex flex-1 flex-col justify-center")
+            }
+          >
             {!isCustom && (
               <div
                 className="pointer-events-none mb-0.5 font-mono text-[8.5px] uppercase tracking-[0.1em]"
@@ -207,6 +330,108 @@ export function SketchdNode({ id, data, selected }: NodeProps) {
               </div>
             )}
           </div>
+
+          {/* Methods compartment — UML convention: a horizontal divider then
+              the method list. When the node is selected each method becomes
+              its own editable row with a delete button, plus an "+ Add"
+              affordance at the bottom. Deselected → read-only text lines. */}
+          {showCompartment && (
+            <>
+              <div
+                className="mt-1.5 mb-1 h-px w-full opacity-40"
+                style={{ background: colors.stroke }}
+              />
+              {selected ? (
+                <div
+                  className="text-left"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  {methods.map((m, i) => (
+                    <div
+                      key={i}
+                      className="group/method flex items-center gap-0.5"
+                    >
+                      <input
+                        ref={(el) => {
+                          methodInputRefs.current[i] = el;
+                        }}
+                        value={m}
+                        onChange={(e) => updateMethod(i, e.target.value)}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") {
+                            // Commit & exit — blur runs trimEmptyMethods,
+                            // so an empty row dissolves the compartment.
+                            e.preventDefault();
+                            (e.target as HTMLInputElement).blur();
+                          } else if (e.key === "Backspace" && m === "") {
+                            // Backspace on empty input deletes the row and
+                            // moves focus to the previous one — feels right.
+                            e.preventDefault();
+                            removeMethod(i);
+                            if (i > 0) setPendingFocus(i - 1);
+                          } else if (e.key === "Escape") {
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
+                        onBlur={() => {
+                          // Slight delay so a click on the × or + button
+                          // gets a chance to fire before we trim empties.
+                          setTimeout(trimEmptyMethods, 0);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder="attach(observer)"
+                        className="nodrag h-4.25 min-w-0 flex-1 border-0 bg-transparent px-0 font-mono text-[10.5px] leading-[1.45] text-ink outline-none placeholder:text-ink-muted/50 focus:bg-paper-2/60"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeMethod(i);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        title="Delete this function"
+                        className="nodrag inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded text-ink-muted/70 opacity-0 transition hover:bg-red/10 hover:text-red group-hover/method:opacity-100 group-focus-within/method:opacity-100"
+                      >
+                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addMethod();
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    title="Add a function"
+                    className="nodrag mt-0.5 inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted/80 transition hover:text-coral"
+                  >
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                      <path d="M5 1.5v7M1.5 5h7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                    add
+                  </button>
+                </div>
+              ) : (
+                <ul
+                  className="m-0 list-none space-y-0 p-0 text-left"
+                  title="Select the node to edit functions"
+                >
+                  {methods.map((m, i) => (
+                    <li
+                      key={i}
+                      className="truncate font-mono text-[10.5px] leading-[1.45] text-ink"
+                    >
+                      {m}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
         </div>
 
         <SideHandle position={Position.Top}    id="top" />
@@ -290,6 +515,26 @@ function AnnotationBadge({
       )}
     </>
   );
+}
+
+// Vertical space the methods compartment needs to add to the node — caller
+// adds this to the base height. Selected nodes use input rows (taller) plus
+// a "+ add" button; deselected nodes use compact text lines. Returning the
+// same number that drives the SVG viewBox keeps rounded corners from being
+// stretched into ovals.
+function methodsCompartmentHeight(methodCount: number, selected: boolean): number {
+  // Layout constants — kept aligned with the JSX above. The editable row is
+  // a borderless input so it matches the read-only line height (17px); the
+  // "+ add" button below it is text-sized (~14px) plus the 2px mt-0.5 gap.
+  const DIVIDER = 6;
+  const FOOTER = 4;
+  const LINE = 17;
+  if (selected) {
+    const ADD_BUTTON = 14 + 2;
+    return DIVIDER + methodCount * LINE + ADD_BUTTON + FOOTER;
+  }
+  if (methodCount === 0) return 0;
+  return DIVIDER + methodCount * LINE + FOOTER;
 }
 
 function SideHandle({ position, id }: { position: Position; id: string }) {

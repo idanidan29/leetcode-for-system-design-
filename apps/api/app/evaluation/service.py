@@ -126,6 +126,9 @@ async def evaluate(
         logger.info("evaluation cache hit", extra={"problem_id": problem.id})
         return cached
 
+    # Widened so mypy doesn't lock the variable to the first branch's tuple
+    # length — patterns are now 1-tuple while system design is a 5-tuple.
+    required: tuple[str, ...]
     if problem.kind == ProblemKind.design_pattern:
         system_prompt = PATTERN_SYSTEM_PROMPT
         user_msg = build_pattern_user_prompt(problem, diagram, notes)

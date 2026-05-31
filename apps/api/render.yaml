@@ -1,0 +1,45 @@
+# Render Blueprint — describes the API service so a fresh Render account can
+# spin up the backend with one click via "New Blueprint Instance".
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Pair this with a hosted Postgres (Neon recommended for the free tier;
+# Render's own Postgres works too but expires after 30 days on the free plan).
+
+services:
+  - type: web
+    name: sketchd-api
+    runtime: python
+    rootDir: apps/api
+    plan: free
+    region: oregon
+    pythonVersion: "3.12"
+    buildCommand: pip install -e .
+    # Pre-deploy: apply Alembic migrations. Render runs this only after a
+    # successful build and only on actual deploys (not on suspend/resume), so
+    # it's safe as the migration trigger.
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # ── Required: must be set in the Render dashboard ──────────────────
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false # e.g. "https://sketchd.vercel.app,https://sketchd.app"
+      # ── Generated / fixed ──────────────────────────────────────────────
+      - key: JWT_SECRET
+        generateValue: true # Render generates a strong random value once
+      - key: API_PREFIX
+        value: "/api/v1"
+      # Cross-site cookies (Vercel <-> Render) require SameSite=None+Secure.
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: "none"
+      # COOKIE_DOMAIN intentionally omitted — leaving it null lets the
+      # browser scope cookies to the API host, which is what we want for the
+      # cross-site flow. Only set if you put the API on a sibling subdomain
+      # of the frontend (e.g. api.sketchd.app + sketchd.app), in which case
+      # set COOKIE_DOMAIN=.sketchd.app and COOKIE_SAMESITE=lax.

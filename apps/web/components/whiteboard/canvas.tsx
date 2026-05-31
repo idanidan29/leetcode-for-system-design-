@@ -88,10 +88,14 @@ function edgeFromArrows(arrows: ArrowMode): Pick<Edge, "markerEnd" | "markerStar
 
 function diagramToReactFlow(d: Diagram): { nodes: RFNode[]; edges: Edge[] } {
   const nodes: RFNode[] = d.nodes.map((n) => {
-    const tone =
-      n.metadata && typeof n.metadata === "object" && "tone" in n.metadata
-        ? (n.metadata as { tone?: SketchdTone }).tone
-        : undefined;
+    const meta = n.metadata && typeof n.metadata === "object" ? n.metadata : {};
+    const tone = "tone" in meta ? (meta as { tone?: SketchdTone }).tone : undefined;
+    const rawMethods = "methods" in meta ? (meta as { methods?: unknown }).methods : undefined;
+    // Defensive: only accept methods if it's an array of strings, in case a
+    // stored diagram was hand-edited or came from an older shape.
+    const methods = Array.isArray(rawMethods)
+      ? rawMethods.filter((m): m is string => typeof m === "string")
+      : undefined;
     return {
       id: n.id,
       type: "sketchd",
@@ -100,6 +104,7 @@ function diagramToReactFlow(d: Diagram): { nodes: RFNode[]; edges: Edge[] } {
         kind: (n.type as ComponentKind),
         label: n.label,
         ...(tone ? { tone } : {}),
+        ...(methods && methods.length > 0 ? { methods } : {}),
       },
     };
   });
@@ -125,12 +130,15 @@ function diagramToReactFlow(d: Diagram): { nodes: RFNode[]; edges: Edge[] } {
 function reactFlowToDiagram(nodes: RFNode[], edges: Edge[]): Diagram {
   const dNodes: DiagramNode[] = nodes.map((n) => {
     const d = n.data;
+    const metadata: Record<string, unknown> = {};
+    if (d.tone) metadata.tone = d.tone;
+    if (d.methods && d.methods.length > 0) metadata.methods = d.methods;
     return {
       id: n.id,
       type: d.kind,
       label: d.label,
       position: { x: n.position.x, y: n.position.y },
-      metadata: d.tone ? { tone: d.tone } : {},
+      metadata,
     };
   });
   const dEdges: DiagramEdge[] = edges.map((e) => {
